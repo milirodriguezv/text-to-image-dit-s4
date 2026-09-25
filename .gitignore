@@ -1,0 +1,22 @@
+# Model checkpoints and weights
+*.pt
+*.pth
+*.ckpt
+
+# Precomputed VAE/CLIP latents and datasets
+data/
+results/
+latents/
+
+# Python cache and environments
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Jupyter checkpoints
+.ipynb_checkpoints/
+
+# OS/editor clutter
+.DS_Store
+.vscode/
