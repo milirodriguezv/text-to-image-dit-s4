@@ -77,18 +77,33 @@ class TextEmbedder(nn.Module):
             nn.Linear(hidden_size, hidden_size, bias=True),
         )
         self.dropout_prob = dropout_prob
-        # Frozen null embedding ∅ = CLIP(""), stored in the state_dict (loaded from null_path in Parte C).
-        self.register_buffer("null_embedding", torch.zeros(1, text_dim))
-        # TODO (Parte C): if null_path is not None, load ∅ from null_path into self.null_embedding.
+        # Frozen null embedding ∅ = CLIP(""), stored in the state_dict (not a parameter, never trained).
+        # If null_path is None it stays zeros; it is overwritten when a checkpoint is loaded.
+        null_embedding = torch.zeros(1, text_dim)
+        if null_path is not None:
+            null = np.load(null_path)
+            assert null.size == text_dim, \
+                f"null embedding at {null_path} has shape {null.shape}, expected (1, {text_dim}) or ({text_dim},)"
+            null_embedding = torch.from_numpy(null.astype(np.float32)).reshape(1, text_dim)
+        self.register_buffer("null_embedding", null_embedding)
 
     def token_drop(self, e, force_drop_ids=None):
         """
         Replaces text embeddings with ∅ to enable classifier-free guidance.
         """
-        raise NotImplementedError  # Parte C
+        if force_drop_ids is None:
+            drop_ids = torch.rand(e.shape[0], device=e.device) < self.dropout_prob
+        else:
+            drop_ids = force_drop_ids == 1
+        e = torch.where(drop_ids[:, None], self.null_embedding.to(e.dtype), e)
+        return e
 
     def forward(self, e, train, force_drop_ids=None):
-        raise NotImplementedError  # Parte C
+        use_dropout = self.dropout_prob > 0
+        if (train and use_dropout) or (force_drop_ids is not None):
+            e = self.token_drop(e, force_drop_ids)
+        embeddings = self.proj(e)
+        return embeddings
 
 
 #################################################################################
