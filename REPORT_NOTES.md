@@ -179,6 +179,17 @@ Properties of this mechanism:
 
 ---
 
+## 5.1 Completed implementation: CLIP text utilities and null embedding
+The repository already includes the first text-conditioning utilities needed for the text-to-image variant:
+
+- [base_code/text_utils.py](base_code/text_utils.py) loads the frozen CLIP tokenizer and text model from Hugging Face, freezes the model parameters, and exposes a helper to encode one or more captions using CLIP's pooled output.
+- The tokenizer is configured with padding to length 77 and truncation enabled, so captions are normalized to the same shape expected by the model.
+- [base_code/make_null_embedding.py](base_code/make_null_embedding.py) builds the null conditioning vector by encoding the empty string, converts it to NumPy float16, and saves it to [features/null_empty_string.npy](features/null_empty_string.npy).
+- This produces the empty-text embedding used for classifier-free guidance, allowing the model to learn both conditional and unconditional denoising behavior.
+- The data flow is consistent with the project specification: the CLIP vector is pooled into a 768-D embedding and is the same representation that will later be projected into the DiT model width.
+
+---
+
 ## 6. Experiment log
 | Run ID | Date | Config changes | Steps | it/s | Wall time | Notes |
 |---|---|---|---|---|---|---|
