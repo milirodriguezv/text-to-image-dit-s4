@@ -167,7 +167,7 @@ class DiT(nn.Module):
         depth=28,
         num_heads=16,
         mlp_ratio=4.0,
-        class_dropout_prob=0.1,
+        class_dropout_prob=0.15,
         text_dim=768,
         null_path=None,
         learn_sigma=True,
@@ -210,7 +210,9 @@ class DiT(nn.Module):
         nn.init.xavier_uniform_(w.view([w.shape[0], -1]))
         nn.init.constant_(self.x_embedder.proj.bias, 0)
 
-        # TODO (Parte D): initialize text projection MLP (proj[0], proj[2]) with normal std=0.02.
+        # Initialize text projection MLP:
+        nn.init.normal_(self.y_embedder.proj[0].weight, std=0.02)
+        nn.init.normal_(self.y_embedder.proj[2].weight, std=0.02)
 
         # Initialize timestep embedding MLP:
         nn.init.normal_(self.t_embedder.mlp[0].weight, std=0.02)
