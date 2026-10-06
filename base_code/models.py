@@ -21,7 +21,7 @@ def modulate(x, shift, scale):
 
 
 #################################################################################
-#               Embedding Layers for Timesteps and Class Labels                 #
+#                   Embedding Layers for Timesteps and Text                     #
 #################################################################################
 
 class TimestepEmbedder(nn.Module):
@@ -64,34 +64,31 @@ class TimestepEmbedder(nn.Module):
         return t_emb
 
 
-class LabelEmbedder(nn.Module):
+class TextEmbedder(nn.Module):
     """
-    Embeds class labels into vector representations. Also handles label dropout for classifier-free guidance.
+    Projects CLIP pooled text embeddings into vector representations. Also handles text dropout
+    (replacement by the frozen null embedding) for classifier-free guidance.
     """
-    def __init__(self, num_classes, hidden_size, dropout_prob):
+    def __init__(self, text_dim, hidden_size, dropout_prob, null_path=None):
         super().__init__()
-        use_cfg_embedding = dropout_prob > 0
-        self.embedding_table = nn.Embedding(num_classes + use_cfg_embedding, hidden_size)
-        self.num_classes = num_classes
+        self.proj = nn.Sequential(
+            nn.Linear(text_dim, hidden_size, bias=True),
+            nn.SiLU(),
+            nn.Linear(hidden_size, hidden_size, bias=True),
+        )
         self.dropout_prob = dropout_prob
+        # Frozen null embedding ∅ = CLIP(""), stored in the state_dict (loaded from null_path in Parte C).
+        self.register_buffer("null_embedding", torch.zeros(1, text_dim))
+        # TODO (Parte C): if null_path is not None, load ∅ from null_path into self.null_embedding.
 
-    def token_drop(self, labels, force_drop_ids=None):
+    def token_drop(self, e, force_drop_ids=None):
         """
-        Drops labels to enable classifier-free guidance.
+        Replaces text embeddings with ∅ to enable classifier-free guidance.
         """
-        if force_drop_ids is None:
-            drop_ids = torch.rand(labels.shape[0], device=labels.device) < self.dropout_prob
-        else:
-            drop_ids = force_drop_ids == 1
-        labels = torch.where(drop_ids, self.num_classes, labels)
-        return labels
+        raise NotImplementedError  # Parte C
 
-    def forward(self, labels, train, force_drop_ids=None):
-        use_dropout = self.dropout_prob > 0
-        if (train and use_dropout) or (force_drop_ids is not None):
-            labels = self.token_drop(labels, force_drop_ids)
-        embeddings = self.embedding_table(labels)
-        return embeddings
+    def forward(self, e, train, force_drop_ids=None):
+        raise NotImplementedError  # Parte C
 
 
 #################################################################################
@@ -156,7 +153,8 @@ class DiT(nn.Module):
         num_heads=16,
         mlp_ratio=4.0,
         class_dropout_prob=0.1,
-        num_classes=1000,
+        text_dim=768,
+        null_path=None,
         learn_sigma=True,
     ):
         super().__init__()
@@ -168,7 +166,7 @@ class DiT(nn.Module):
 
         self.x_embedder = PatchEmbed(input_size, patch_size, in_channels, hidden_size, bias=True)
         self.t_embedder = TimestepEmbedder(hidden_size)
-        self.y_embedder = LabelEmbedder(num_classes, hidden_size, class_dropout_prob)
+        self.y_embedder = TextEmbedder(text_dim, hidden_size, class_dropout_prob, null_path)
         num_patches = self.x_embedder.num_patches
         # Will use fixed sin-cos embedding:
         self.pos_embed = nn.Parameter(torch.zeros(1, num_patches, hidden_size), requires_grad=False)
@@ -197,8 +195,7 @@ class DiT(nn.Module):
         nn.init.xavier_uniform_(w.view([w.shape[0], -1]))
         nn.init.constant_(self.x_embedder.proj.bias, 0)
 
-        # Initialize label embedding table:
-        nn.init.normal_(self.y_embedder.embedding_table.weight, std=0.02)
+        # TODO (Parte D): initialize text projection MLP (proj[0], proj[2]) with normal std=0.02.
 
         # Initialize timestep embedding MLP:
         nn.init.normal_(self.t_embedder.mlp[0].weight, std=0.02)
@@ -235,7 +232,7 @@ class DiT(nn.Module):
         Forward pass of DiT.
         x: (N, C, H, W) tensor of spatial inputs (images or latent representations of images)
         t: (N,) tensor of diffusion timesteps
-        y: (N,) tensor of class labels
+        y: (N, 768) tensor of CLIP pooled text embeddings (e_pooled)
         """
         x = self.x_embedder(x) + self.pos_embed  # (N, T, D), where T = H * W / patch_size ** 2
         t = self.t_embedder(t)                   # (N, D)
