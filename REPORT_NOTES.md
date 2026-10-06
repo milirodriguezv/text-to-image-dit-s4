@@ -137,6 +137,29 @@ Properties of this mechanism:
 - CFG: ε = ε_uncond + s·(ε_cond − ε_uncond). The conditional and unconditional branches are batched
   into one forward pass.
 
+#### CFG explained intuitively (for the method section)
+- **What the model predicts.** Sampling starts from pure noise. At every step the model answers
+  "which part of this is noise, so it can be removed?". That answer is ε.
+- **Two opinions, exaggerate the difference.** At every step we ask for two answers about the same
+  latent:
+  - with the caption ("remove the noise thinking of *a dog on the beach*") → `ε_cond`;
+  - with ∅ ("remove the noise thinking of *any image*") → `ε_uncond`.
+
+  Their difference `ε_cond − ε_uncond` is "what the caption contributes". CFG amplifies it by `s`:
+  `ε = ε_uncond + s·(ε_cond − ε_uncond)`. `s = 1` is the plain conditional prediction; `s = 4` pushes the
+  sample four times as far in the caption's direction (higher CLIP Score, lower diversity).
+- **Doubled batch.** Both questions go through the model in a single forward pass: latents `[z, z]`,
+  conditions `[e_prompt, ∅]`. `forward_with_cfg` splits the halves, applies the formula and returns
+  the guided ε in both halves; callers keep `samples.chunk(2)[0]`.
+- **The 3-channel quirk we fixed.** The latent (and therefore ε) has 4 channels. The original DiT code
+  guides only channels 0–2 for exact reproducibility of the paper's numbers; channel 3 stays at
+  `s = 1` whatever scale is requested. We apply guidance to all 4 channels (standard CFG), so the CFG
+  sweep s ∈ {1, 1.5, 2, 3, 4, 5} really guides the whole latent.
+- **Σ_θ is not guided.** The 4 variance channels (how much randomness each reverse step adds) are used
+  as predicted, as in DiT and GLIDE.
+- Verified 06/10 (commit `a304609`): with random weights the output matches the manual formula for
+  s ∈ {0, 1, 4}; channel 3 is now guided; Σ is unguided; the repo's DDPM sampler runs without NaN.
+
 ### 3.11 VAE: `sd-vae-ft-ema` for encoding and decoding
 - ft-EMA and ft-MSE share the same encoder; only the decoder was fine-tuned.
 - ft-EMA gives slightly sharper reconstructions (better rFID); ft-MSE is smoother (higher PSNR).
@@ -164,6 +187,7 @@ Properties of this mechanism:
 | CFG scale "s = 1.5 to 4.0" vs "s ∈ [1.0, 5.0]" | Two ranges quoted | Sweep {1.0, 1.5, 2, 3, 4, 5} |
 | Extract `E_seq` in Step 1 | Unused by Variant A; ~50 GB | Not stored; regenerate only if Variant B is explored |
 | Dataset "MS-COCO Captions" (split unspecified) | train2017 overlaps val2014 | train2014 / val2014 |
+| Param count ≈33.4M (CLAUDE.md / task split) | Actual count is 33,003,776 | Target ≈33.0M: original DiT-S/4 with 1001×384 label table = 32,945,024 (≈32.9M, matches paper) − 384,384 (table) + 443,136 (`TextEmbedder`). Includes the frozen `pos_embed` (24,576, `requires_grad=False`); ∅ is a buffer, not counted. Corrected in CLAUDE.md and the task split (06/10) |
 
 ---
 
@@ -171,10 +195,10 @@ Properties of this mechanism:
 | Check | Expected | Result | Date |
 |---|---|---|---|
 | VAE round trip of stored latent | Matches cropped original | | |
-| Param count | ≈33.4M | | |
-| Output at init | Shape (2,8,32,32), all zeros | | |
+| Param count | ≈33.0M (corrected, see §4) | 33,003,776 ✓ | 06/10 |
+| Output at init | Shape (2,8,32,32), all zeros | (2,8,32,32), all zeros ✓ (adaLN-Zero intact) | 06/10 |
 | Overfit 64 samples, 2K steps | MSE falls; captions reproduce their own images | | |
-| Measured text dropout | ≈15% | | |
+| Measured text dropout | ≈15% | 0.1501 ✓ (N=100,000 via `token_drop`; repeat runs 0.15008, 0.1506) | 06/10 |
 | fp32 vs bf16, 500 steps | Overlapping loss; bf16 faster | | |
 
 ---
@@ -212,7 +236,32 @@ Properties of this mechanism:
 ## 7. Observations, issues and deviations
 _(Date each entry. Include bugs found, anything that deviated from the plan, and why.)_
 
--
+- **06/10 — `models.py` implemented (Persona 2, branch `mili`).** Commits: `76118fb` (TextEmbedder
+  interface stub), `f65bf53` (TextEmbedder logic), `869ec46` (proj init normal std 0.02 + default
+  `class_dropout_prob` 0.1 → 0.15), `a304609` (CFG on all 4 ε channels), `457e9fe` (tests).
+- **06/10 — Interface decisions (not specified in CLAUDE.md; ours):**
+  - Constructor: `DiT_models["DiT-S/4"](input_size=32, text_dim=768, class_dropout_prob=0.15, null_path=...)`.
+  - `null_path` is optional. ∅ is a persistent buffer `y_embedder.null_embedding`, saved in the
+    checkpoint, so it is only needed when creating the model for training; when loading a
+    checkpoint pass `null_path=None`.
+  - Accepted ∅ file: `.npy` of shape (1,768) or (768,), cast to float32; wrong size → `AssertionError`.
+  - ∅ itself is produced by Persona 1 (`null_empty_string.npy`); `models.py` does not compute it
+    (tests use a synthetic vector).
+  - Name `class_dropout_prob` kept for compatibility, although it is now text dropout.
+  - Default changed 0.1 → 0.15 so that forgetting to pass it does not silently train with 10%.
+- **06/10 — Recommendation for `train.py` (Persona 3):** add
+  `assert model.y_embedder.null_embedding.abs().sum() > 0` after building the model; if `null_path`
+  is forgotten, ∅ silently stays all zeros.
+- **06/10 — adaLN-Zero gradient propagation (expected, not a bug):** step 0: only
+  `final_layer.linear` (W, b) gets a non-zero gradient; step 1: 30 tensors (final adaLN, the 12
+  blocks' adaLN, patch embed via residual paths, final linear); step 2: all 134, incl. `TextEmbedder`.
+  Zero gradient on the text embedder during the first 2 steps is therefore normal.
+- **06/10 — Test suite** (`base_code/tests/test_models.py`): run
+  `.venv/bin/python -m pytest base_code/tests -q` → 19 passed, 1 skipped (CUDA bf16), ~6 s. bf16
+  autocast on CPU works. Comparisons use `allclose(atol=1e-5)` because batched vs per-row float32
+  matmuls differ by ~1e-7.
+- **06/10 — Local test environment:** `.venv` with Python 3.13, torch 2.14.1, timm 1.0.30; CPU/MPS
+  (Mac). Reminder: torch ≥ 2.6 needs `torch.load(..., weights_only=False)` for our checkpoints.
 
 ---
 
