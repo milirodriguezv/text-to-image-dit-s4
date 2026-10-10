@@ -20,11 +20,9 @@ def load_clip(device: str)-> tuple:
 
 def encode_texts(texts, tokenizer, text_model, device):
     """
-
+    Divide el texto en tokens rellenando siempre hasta 77 y acorta los captions demasiado largos
     """
     tokens = tokenizer(
-        # Divide el texto en tokens rellenando siempre hasta 77
-        # acorta captions demasiado largos
         texts, 
         padding ="max_length", 
         max_length = 77, 

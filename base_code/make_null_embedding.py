@@ -8,8 +8,8 @@ def main():
     e_null = encode_texts([""], tokenizer, text_model, device)
 
     arr = e_null.cpu().numpy().astype(np.float16)
-    os.makedirs("features", exist_ok=True)
-    np.save("features/null_empty_string.npy", arr)
+    os.makedirs("features/train", exist_ok=True)
+    np.save("features/train/null_empty_string.npy", arr)
 
     ## Pruebas
     # print(arr.shape)

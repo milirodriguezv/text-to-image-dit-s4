@@ -1,0 +1,83 @@
+# Model checkpoints and weights
+*.pt
+*.pth
+*.ckpt
+
+# Precomputed VAE/CLIP latents and datasets
+data/
+results/
+latents/
+
+# Python cache and environments
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Jupyter checkpoints
+.ipynb_checkpoints/
+
+# OS/editor clutter
+.DS_Store
+.vscode/
+
+# ============================================
+# Datos de COCO (se descargan, no se versionan)
+# ============================================
+coco/
+train2014/
+val2014/
+annotations/
+*.zip
+
+# ============================================
+# Features extraídos (compartir por Drive/OneDrive)
+# Se ignora todo menos el embedding nulo (1,5 KB)
+# ============================================
+features/*
+!features/null_empty_string.npy
+
+# Cualquier .npy suelto, salvo el embedding nulo
+*.npy
+!null_empty_string.npy
+
+# ============================================
+# Resultados de entrenamiento y evaluación
+# ============================================
+results/
+checkpoints/
+samples/
+*.pt
+*.pth
+*.ckpt
+*.npz
+
+# ============================================
+# Entorno y caché de Python
+# ============================================
+__pycache__/
+*.py[cod]
+*.egg-info/
+.ipynb_checkpoints/
+.pytest_cache/
+.venv/
+venv/
+
+# ============================================
+# Caché de modelos descargados (CLIP, VAE)
+# ============================================
+.cache/
+huggingface/
+
+# ============================================
+# Logs, runs y editores
+# ============================================
+wandb/
+runs/
+*.log
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+coco/
