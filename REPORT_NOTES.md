@@ -188,6 +188,19 @@ The repository already includes the first text-conditioning utilities needed for
 - This produces the empty-text embedding used for classifier-free guidance, allowing the model to learn both conditional and unconditional denoising behavior.
 - The data flow is consistent with the project specification: the CLIP vector is pooled into a 768-D embedding and is the same representation that will later be projected into the DiT model width.
 
+### 5.2 Work completed today: feature extraction pipeline for COCO
+On 2026-10-14 we implemented and validated the offline feature extraction workflow in [base_code/extract_features.py](base_code/extract_features.py) for the text-to-image DiT setup.
+
+- The pipeline loads COCO images and captions from the train2014 / val2014 splits, then prepares the image preprocessing pipeline consistent with the project spec: center crop to 256, resize to 256, `ToTensor()`, and normalization to `[-1, 1]` before VAE encoding.
+- For each image, we encode both the original view and its horizontal flip with the frozen VAE. The posterior mean and std are retained and saved together as a single latent tensor of shape `(N, 2, 8, 32, 32)`, following the canonical DiT latent representation used during training.
+- For each image, the first five captions are tokenized with the CLIP tokenizer (`padding="max_length"`, `max_length=77`, `truncation=True`) and passed through the frozen CLIP ViT-L/14 text encoder to obtain the pooled output `(768,)` for each caption. These are stored as `(N, 5, 768)` in fp16.
+- The null caption embedding is kept as a separate saved vector for classifier-free guidance, and is stored in the expected `features/` directory with the rest of the extracted conditioning features.
+- The extraction flow is aligned with the training setup: each image gets one latent row and a caption bank of 5 text embeddings, while the dataset remains row-aligned across arrays to make random caption selection and latent sampling straightforward in the training pipeline.
+- Validation checks included verifying the latent encoding/output shape and confirming that the VAE round trip behaves consistently with the project goal: the stored latent mean should decode back to a visually coherent image when compared with the original crop.
+- The data layout is intentionally designed to support the later training dataset: one row per image, with the caption dimension handled as a second index rather than introducing any extra per-sample metadata files.
+
+This is the main preprocessing block completed today and it matches the repo specification for offline latent and text feature generation before training begins.
+
 ---
 
 ## 6. Experiment log
