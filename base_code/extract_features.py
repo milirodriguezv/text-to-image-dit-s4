@@ -5,19 +5,22 @@ from pathlib import Path
 from PIL import Image
 from torchvision import transforms
 
+
 def load_images(
     annotation_file: str,
+    captions_file: str,
     images_dir: str,
     max_images: int | None = None
-)-> list:
+) -> list:
     """
-    Load image metadata and group person bounding boxes by image.
+    Load image metadata, person bounding boxes and captions.
 
     Args:
         annotation_file: Path to the COCO person keypoints JSON file.
+        captions_file: Path to the COCO captions JSON file.
         images_dir: Directory containing the COCO images.
         max_images: Maximum number of images to load.
-            If None, load all images with person annotations.
+            If None, load all eligible images.
 
     Returns:
         A list of dictionaries containing:
@@ -26,9 +29,15 @@ def load_images(
             - width: Image width in pixels.
             - height: Image height in pixels.
             - bboxes: List of person bounding boxes in COCO format.
+            - captions: List of five captions associated with the image.
     """
+    # Load person keypoints annotations.
     with open(annotation_file, "r", encoding="utf-8") as f:
         data = json.load(f)
+
+    # Load captions annotations.
+    with open(captions_file, "r", encoding="utf-8") as f:
+        captions_data = json.load(f)
 
     images = data["images"]
     annotations = data["annotations"]
@@ -42,24 +51,38 @@ def load_images(
 
         bboxes_by_image.setdefault(image_id, []).append(bbox)
 
-    # Keep only images with person bounding boxes.
+    # Group captions by image_id.
+    captions_by_image = {}
+
+    for annotation in captions_data["annotations"]:
+        image_id = annotation["image_id"]
+        caption = annotation["caption"]
+
+        captions_by_image.setdefault(image_id, []).append(caption)
+
+    # Keep images with person bounding boxes and five captions.
     image_data = []
 
     for image in images:
         image_id = image["id"]
         bboxes = bboxes_by_image.get(image_id, [])
+        captions = captions_by_image.get(image_id, [])
 
-        if not bboxes:
+        if not bboxes or len(captions) < 5:
             continue
 
         image_path = Path(images_dir) / image["file_name"]
+
+        if not image_path.is_file():
+            continue
 
         image_data.append({
             "image_id": image_id,
             "image_path": image_path,
             "width": image["width"],
             "height": image["height"],
-            "bboxes": bboxes
+            "bboxes": bboxes,
+            "captions": captions[:5]
         })
 
         # Stop once the requested number of images is reached.
@@ -298,14 +321,23 @@ def test_preprocess_image(image_path: str, bboxes: list):
 
 if __name__ == "__main__":
 
-    # Dataset paths: replace these with your actual paths.
-    annotation_file = Path("coco/annotations/person_keypoints_train2014.json")
+    annotation_file = Path(
+        "coco/annotations/person_keypoints_train2014.json"
+    )
+    captions_file = Path(
+        "coco/annotations/captions_train2014.json"
+    )
     images_dir = Path("coco/train2014")
 
     # Check that the paths exist.
     if not annotation_file.exists():
         raise FileNotFoundError(
             f"Annotation file not found: {annotation_file}"
+        )
+
+    if not captions_file.exists():
+        raise FileNotFoundError(
+            f"Captions file not found: {captions_file}"
         )
 
     if not images_dir.is_dir():
@@ -316,12 +348,16 @@ if __name__ == "__main__":
     # Load metadata for just one image.
     images = load_images(
         annotation_file=str(annotation_file),
+        captions_file=str(captions_file),
         images_dir=str(images_dir),
         max_images=1
     )
 
     if not images:
-        raise ValueError("No images with person bounding boxes were found.")
+        raise ValueError(
+            "No images with person bounding boxes and five captions "
+            "were found."
+        )
 
     # Select the first image.
     image_data = images[0]
@@ -329,6 +365,14 @@ if __name__ == "__main__":
     print("Image ID:", image_data["image_id"])
     print("Image path:", image_data["image_path"])
     print("Bounding boxes:", image_data["bboxes"])
+
+    # Display the five captions.
+    print("\nCaptions:")
+    for i, caption in enumerate(image_data["captions"], start=1):
+        print(f"  {i}. {caption}")
+
+    # Check that the image has exactly five captions.
+    assert len(image_data["captions"]) == 5
 
     # Display the original image and its preprocessed version.
     test_preprocess_image(
