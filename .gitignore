@@ -11,7 +11,7 @@ latents/
 # Python cache and environments
 __pycache__/
 *.pyc
-.venv/
+.venv-1/
 venv/
 
 # Jupyter checkpoints

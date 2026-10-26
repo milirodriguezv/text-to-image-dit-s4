@@ -170,6 +170,7 @@ Properties of this mechanism:
 ## 5. Sanity checks (record outcome and date)
 | Check | Expected | Result | Date |
 |---|---|---|---|
+| Feature extraction smoke test (2 images) | Latents `(2,2,8,32,32)`, embeddings `(2,5,768)`, aligned IDs | Passed; float16 arrays and IDs `[384029, 222016]`; null embedding `(1,768)` also validated | 2026-10-26 |
 | VAE round trip of stored latent | Matches cropped original | | |
 | Param count | ≈33.4M | | |
 | Output at init | Shape (2,8,32,32), all zeros | | |
@@ -188,14 +189,16 @@ The repository already includes the first text-conditioning utilities needed for
 - This produces the empty-text embedding used for classifier-free guidance, allowing the model to learn both conditional and unconditional denoising behavior.
 - The data flow is consistent with the project specification: the CLIP vector is pooled into a 768-D embedding and is the same representation that will later be projected into the DiT model width.
 
-### 5.2 Current COCO image/caption loader and person-crop preprocessing
-On 2026-10-24, [base_code/extract_features.py](base_code/extract_features.py) was updated to load COCO captions alongside person keypoint annotations and prepare a person-centered image crop.
+### 5.2 COCO feature extraction implementation and smoke test
+On 2026-10-26, [base_code/extract_features.py](base_code/extract_features.py) was extended from image/caption inspection to offline VAE latent-statistic and CLIP pooled-text extraction.
 
-- `load_images` joins image records, person bounding boxes and captions by COCO image ID. It keeps only records with at least one person bounding box, at least five captions, and an image file present on disk. It returns the first five captions in annotation order.
-- `preprocess_image` unions all person boxes for an image, expands the union by a 20% margin, makes it square, clips it to the image boundaries, resizes the resulting crop to 256×256 with bicubic resampling, and converts it to a tensor normalized to `[-1, 1]`.
-- The script's `__main__` example reads the train2014 keypoints and captions files, selects one eligible image, prints its metadata and five captions, checks that five captions were returned, and saves an original-versus-preprocessed visualization as `preprocessing_test.png`.
-- Despite its filename, this implementation does **not yet** encode images with the VAE, encode captions with CLIP, or save latent/embedding arrays. The expected `(N, 2, 8, 32, 32)` latents and `(N, 5, 768)` text embeddings remain planned outputs, not results produced by this script. No VAE round-trip or feature-shape validation is recorded here.
-- This person-centered crop is different from the fixed-spec full-image center-crop preprocessing. The crop changes image composition and should be treated as a deviation requiring a project decision before using the resulting images for model training.
+- `load_images` joins COCO image records, person keypoint boxes and captions by image ID. It filters for an existing image, at least one person box and at least five captions, then keeps the first five captions in annotation order.
+- `preprocess_image` unions person boxes, adds a 20% margin, makes the union square, clips it to the image bounds, resizes the crop to 256×256 with bicubic resampling, and normalizes it to `[-1, 1]`. The horizontal-flip path mirrors both the image and its boxes before applying the same preprocessing.
+- `loadVAE` loads `stabilityai/sd-vae-ft-ema` in evaluation mode. `extract_latent_stats` stores the posterior mean and standard deviation concatenated as 8 channels. **Both are multiplied by `0.18215` before storage.** This differs from the fixed data specification, which stores unscaled statistics and applies `0.18215` when sampling `z_0`; any future dataset implementation must use one convention only and must not scale these saved statistics a second time.
+- `extract_dataset_latents` writes `latents.npy` as float16 with shape `(N, 2, 8, 32, 32)` (original and flipped views) and `image_ids.npy` as int64. `extract_dataset_text_embeddings` uses the frozen CLIP text utilities to encode the first five captions per image and writes float16 `e_pooled.npy` with shape `(N, 5, 768)`. It checks shapes and finite values and verifies that text and latent image IDs are aligned. The empty-string embedding is generated separately; it is not written by this script.
+- The current `main()` is configured for a **two-image CPU smoke run** (`max_images=2`), not full COCO extraction. A run produced rows for image IDs `384029` and `222016`. [base_code/prueba.py](base_code/prueba.py) validated the saved arrays and the existing `(1, 768)` float16 null embedding; the assertions passed on 2026-10-26. Python syntax compilation also passed. These checks validate saved shapes, dtypes and IDs, not VAE reconstruction quality or feature semantics.
+- These outputs are not yet the full training dataset: before extraction for training, update the sample limit and verify the data paths and chosen scaling convention. No VAE round-trip has been recorded.
+- The person-centered crop differs from the fixed-spec full-image center crop, changing image composition. Also, clipping a square box at an image boundary can make the crop rectangular before it is resized to a square, potentially stretching it. Treat the crop choice and boundary behavior as preprocessing deviations to resolve or explicitly accept before training.
 
 ---
 
@@ -232,7 +235,8 @@ On 2026-10-24, [base_code/extract_features.py](base_code/extract_features.py) wa
 ## 7. Observations, issues and deviations
 _(Date each entry. Include bugs found, anything that deviated from the plan, and why.)_
 
-- **2026-10-24 — Preprocessing scope and crop deviation:** `base_code/extract_features.py` currently selects COCO images with people and at least five captions, then creates a square crop around the union of person boxes. It does not extract or persist VAE/CLIP features. The person-focused crop also differs from the specified full-image center crop; decide whether this is intentional before training, and keep the extraction claims in §5.2 limited to behavior actually implemented.
+- **2026-10-24 — Initial preprocessing scope and crop deviation:** at that point, `base_code/extract_features.py` selected COCO images with people and at least five captions, then created a square crop around the union of person boxes; feature extraction had not yet been added. The person-focused crop differs from the specified full-image center crop. The extractor was extended on 2026-10-26; see the current implementation and remaining caveats in §5.2.
+- **2026-10-26 — Feature extraction added and smoke-tested:** the script now saves VAE posterior mean/std statistics for original and horizontally flipped person crops, CLIP pooled embeddings for five captions, and aligned image IDs. A two-image CPU smoke run passed the assertions in `base_code/prueba.py` (shapes, dtypes, IDs and null embedding). This is not a full-dataset run or VAE round-trip. The extractor scales mean and std by `0.18215` before saving, unlike the fixed specification; do not apply the scale again in the dataset. The two-image limit and person-crop preprocessing remain deviations to resolve before training.
 
 ---
 

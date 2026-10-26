@@ -1,10 +1,21 @@
+import os
+import hashlib
+
 import json
 import matplotlib.pyplot as plt
 
+import csv
 from pathlib import Path
 from PIL import Image
 from torchvision import transforms
+from collections import defaultdict
 
+import torch
+from diffusers import AutoencoderKL
+
+import numpy as np
+
+from text_utils import encode_texts, load_clip
 
 def load_images(
     annotation_file: str,
@@ -31,11 +42,10 @@ def load_images(
             - bboxes: List of person bounding boxes in COCO format.
             - captions: List of five captions associated with the image.
     """
-    # Load person keypoints annotations.
+
     with open(annotation_file, "r", encoding="utf-8") as f:
         data = json.load(f)
 
-    # Load captions annotations.
     with open(captions_file, "r", encoding="utf-8") as f:
         captions_data = json.load(f)
 
@@ -60,7 +70,6 @@ def load_images(
 
         captions_by_image.setdefault(image_id, []).append(caption)
 
-    # Keep images with person bounding boxes and five captions.
     image_data = []
 
     for image in images:
@@ -85,7 +94,6 @@ def load_images(
             "captions": captions[:5]
         })
 
-        # Stop once the requested number of images is reached.
         if max_images is not None and len(image_data) >= max_images:
             break
 
@@ -257,13 +265,10 @@ def preprocess_image(
     # 1. Calculate the union of the bounding boxes.
     bbox = load_bbox(bboxes)
 
-    # 2. Add a margin around the union.
     bbox = expand_bbox(bbox, margin)
 
-    # 3. Make the bounding box square.
     bbox = make_square(bbox)
 
-    # 4. Adjust the bounding box to the image boundaries.
     bbox = clip_bbox(bbox, image_width, image_height)
 
     # Convert coordinates to integers.
@@ -274,14 +279,14 @@ def preprocess_image(
     x_max = int(x_min + width)
     y_max = int(y_min + height)
 
-    # 5. Crop and resize the image.
+    # Cortar la imagen
     cropped_image = image.crop((x_min, y_min, x_max, y_max))
     cropped_image = cropped_image.resize(
         (output_size, output_size),
         Image.Resampling.BICUBIC
     )
 
-    # 6. Convert to tensor and normalize to [-1, 1].
+    # Convertir a tensor y normalizarla [-1,1]
     transform = transforms.Compose([
         transforms.ToTensor(),
         transforms.Normalize([0.5] * 3, [0.5] * 3)
@@ -318,9 +323,482 @@ def test_preprocess_image(image_path: str, bboxes: list):
 
     print("Saved visualization to preprocessing_test.png")
 
+def loadVAE(device: str = "cpu"):
+    vae = AutoencoderKL.from_pretrained(
+        "stabilityai/sd-vae-ft-ema"
+    ).to(device)
 
-if __name__ == "__main__":
+    vae.eval()
 
+    return vae
+
+def encode_image(vae, image, device="cpu"):
+    # Añadir dimensión del batch: (3, 256, 256) -> (1, 3, 256, 256)
+    image = image.unsqueeze(0).to(device)
+
+    # Codificar la imagen sin calcular gradientes
+    with torch.no_grad():
+        latent_dist = vae.encode(image).latent_dist
+
+    return latent_dist
+
+def flip_bboxes_horizontal(bboxes, image_width):
+    """
+    Transforma las bounding boxes para una imagen girada horizontalmente.
+
+    Cada bbox tiene el formato [x, y, width, height].
+    """
+    flipped_bboxes = []
+
+    for x, y, width, height in bboxes:
+        flipped_x = image_width - x - width
+
+        flipped_bboxes.append([
+            flipped_x,
+            y,
+            width,
+            height
+        ])
+
+    return flipped_bboxes
+
+def extract_latent_stats(vae, image_tensor, device="cpu"):
+    """
+    Codifica una imagen preprocesada con el VAE.
+
+    Args:
+        vae: VAE previamente cargado.
+        image_tensor: Tensor con forma (3, 256, 256).
+        device: Dispositivo donde se ejecuta el modelo.
+
+    Returns:
+        Tensor con forma (8, 32, 32):
+        4 canales de media + 4 canales de desviación típica.
+    """
+    # Añadir dimensión de batch y mover al dispositivo.
+    image_tensor = image_tensor.unsqueeze(0).to(device)
+
+    # Obtener la distribución latente.
+    with torch.no_grad():
+        latent_dist = vae.encode(image_tensor).latent_dist
+
+        mean = latent_dist.mean
+        std = latent_dist.std
+
+        # Concatenar los canales: (1, 8, 32, 32).
+        latent_stats = torch.cat([mean, std], dim=1)
+
+    # Eliminar la dimensión de batch: (8, 32, 32).
+    return latent_stats.squeeze(0)
+
+
+def extract_image_latents(vae, image_data, device="cpu"):
+    """
+    Extrae los latents de la imagen original y de su flip horizontal.
+
+    Returns:
+        Array NumPy con forma (2, 8, 32, 32).
+    """
+    # Abrir la imagen original.
+    image = Image.open(
+        image_data["image_path"]
+    ).convert("RGB")
+
+    # Obtener las dimensiones originales.
+    image_width, image_height = image.size
+
+    # Vista original.
+    original_tensor = preprocess_image(
+        image=image,
+        bboxes=image_data["bboxes"]
+    )
+
+    original_latents = extract_latent_stats(
+        vae=vae,
+        image_tensor=original_tensor,
+        device=device
+    )
+
+    # Voltear la imagen horizontalmente.
+    flipped_image = image.transpose(
+        Image.Transpose.FLIP_LEFT_RIGHT
+    )
+
+    # Transformar las bounding boxes para la imagen volteada.
+    flipped_bboxes = flip_bboxes_horizontal(
+        bboxes=image_data["bboxes"],
+        image_width=image_width
+    )
+
+    # Preprocesar la vista volteada con las cajas transformadas.
+    flipped_tensor = preprocess_image(
+        image=flipped_image,
+        bboxes=flipped_bboxes
+    )
+
+    flipped_latents = extract_latent_stats(
+        vae=vae,
+        image_tensor=flipped_tensor,
+        device=device
+    )
+
+    # Apilar ambas vistas.
+    latents = torch.stack(
+        [original_latents, flipped_latents],
+        dim=0
+    )
+
+    return latents.cpu().numpy()
+
+def get_image_ids(images):
+    return np.asarray(
+        [image["image_id"] for image in images],
+        dtype=np.int64
+    )
+
+
+def get_dataset_signature(image_ids):
+    return hashlib.sha256(
+        image_ids.tobytes()
+    ).hexdigest()
+
+
+def load_or_create_progress(progress_path, n_images, signature):
+    """
+    Carga el progreso anterior o crea uno nuevo.
+    El progreso indica qué imágenes están completamente procesadas.
+    """
+    progress_path = Path(progress_path)
+    metadata_path = progress_path.with_suffix(".json")
+
+    if progress_path.exists() and metadata_path.exists():
+        with open(metadata_path, "r", encoding="utf-8") as f:
+            metadata = json.load(f)
+
+        if (
+            metadata.get("signature") != signature
+            or metadata.get("n_images") != n_images
+        ):
+            raise ValueError(
+                f"El progreso de {progress_path.name} "
+                "no corresponde al conjunto actual de imágenes. "
+                "No se continuará para evitar mezclar datos."
+            )
+
+        progress = np.load(progress_path)
+
+        if progress.shape != (n_images,):
+            raise ValueError("El archivo de progreso tiene una forma incorrecta.")
+
+        return progress.astype(bool)
+
+    if progress_path.exists() or metadata_path.exists():
+        raise ValueError(
+            f"El progreso de {progress_path.name} está incompleto. "
+            "Revísalo antes de continuar."
+        )
+
+    progress = np.zeros(n_images, dtype=bool)
+
+    save_progress(
+        progress,
+        progress_path,
+        metadata_path,
+        n_images,
+        signature
+    )
+
+    return progress
+
+
+def save_progress(progress, progress_path, metadata_path,
+                  n_images, signature):
+    """
+    Guarda el progreso mediante archivos temporales y reemplazo atómico.
+    """
+    progress_path = Path(progress_path)
+    metadata_path = Path(metadata_path)
+
+    temp_progress = progress_path.with_name(
+        progress_path.name + ".tmp.npy"
+    )
+    temp_metadata = metadata_path.with_name(
+        metadata_path.name + ".tmp"
+    )
+
+    np.save(temp_progress, progress)
+
+    with open(temp_metadata, "w", encoding="utf-8") as f:
+        json.dump(
+            {
+                "n_images": n_images,
+                "signature": signature
+            },
+            f
+        )
+        f.flush()
+        os.fsync(f.fileno())
+
+    os.replace(temp_progress, progress_path)
+    os.replace(temp_metadata, metadata_path)
+
+
+def open_or_create_memmap(path, shape, dtype):
+    """
+    Abre un archivo existente para continuar o crea uno nuevo.
+    No sobrescribe silenciosamente archivos con dimensiones distintas.
+    """
+    path = Path(path)
+
+    if path.exists():
+        array = np.load(path, mmap_mode="r+")
+
+        if array.shape != shape or array.dtype != np.dtype(dtype):
+            del array
+            raise ValueError(
+                f"{path} tiene dimensiones o tipo incorrectos. "
+                "No se sobrescribirá automáticamente."
+            )
+
+        return array
+
+    return np.lib.format.open_memmap(
+        path,
+        mode="w+",
+        dtype=dtype,
+        shape=shape
+    )
+
+
+def extract_dataset_latents(images, vae, output_dir, device="cpu"):
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    n = len(images)
+    if n == 0:
+        raise ValueError("No hay imágenes para procesar.")
+
+    ids = get_image_ids(images)
+    signature = get_dataset_signature(ids)
+
+    ids_path = output_dir / "image_ids.npy"
+
+    if ids_path.exists():
+        stored_ids = np.load(ids_path)
+
+        if not np.array_equal(stored_ids, ids):
+            raise ValueError(
+                "Los IDs existentes no coinciden con las imágenes actuales."
+            )
+    else:
+        np.save(ids_path, ids)
+
+    latents = open_or_create_memmap(
+        output_dir / "latents.npy",
+        (n, 2, 8, 32, 32),
+        np.float16
+    )
+
+    progress_path = output_dir / "latents_progress.npy"
+    metadata_path = progress_path.with_suffix(".json")
+
+    done = load_or_create_progress(
+        progress_path, n, signature
+    )
+
+    try:
+        for i, image_data in enumerate(images):
+            if done[i]:
+                continue
+
+            print(
+                f"Latentes: {i + 1}/{n} "
+                f"(ID: {image_data['image_id']})"
+            )
+
+            result = extract_image_latents(
+                vae=vae,
+                image_data=image_data,
+                device=device
+            )
+
+            if result.shape != (2, 8, 32, 32):
+                raise ValueError(
+                    f"Shape incorrecto en la imagen {image_data['image_id']}"
+                )
+
+            if not np.isfinite(result).all():
+                raise ValueError(
+                    f"Latentes no finitos en la imagen {image_data['image_id']}"
+                )
+
+            latents[i] = result.astype(np.float16)
+
+            # Sincronizar los datos antes de marcar la imagen como terminada.
+            latents.flush()
+            done[i] = True
+
+            if (i + 1) % 25 == 0 or i == n - 1:
+                save_progress(
+                    done, progress_path, metadata_path, n, signature
+                )
+                print(f"Progreso: {done.sum()}/{n}")
+
+        # Guardar también el progreso final.
+        latents.flush()
+        save_progress(
+            done, progress_path, metadata_path, n, signature
+        )
+
+    finally:
+        del latents
+
+    print(f"Latentes completados: {done.sum()}/{n}")
+
+
+def extract_dataset_text_embeddings(
+    images, tokenizer, text_model, output_dir, device="cpu"
+):
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    n = len(images)
+    if n == 0:
+        raise ValueError("No hay imágenes para procesar.")
+
+    ids = get_image_ids(images)
+    signature = get_dataset_signature(ids)
+
+    ids_path = output_dir / "image_ids.npy"
+
+    if not ids_path.exists():
+        raise FileNotFoundError(
+            "No existe image_ids.npy. Ejecuta primero la extracción de latentes."
+        )
+
+    stored_ids = np.load(ids_path)
+
+    if not np.array_equal(stored_ids, ids):
+        raise ValueError(
+            "Los IDs de las imágenes no coinciden con los latentes."
+        )
+
+    embeddings = open_or_create_memmap(
+        output_dir / "e_pooled.npy",
+        (n, 5, 768),
+        np.float16
+    )
+
+    progress_path = output_dir / "embeddings_progress.npy"
+    metadata_path = progress_path.with_suffix(".json")
+
+    done = load_or_create_progress(
+        progress_path, n, signature
+    )
+
+    try:
+        for i, image_data in enumerate(images):
+            if done[i]:
+                continue
+
+            captions = image_data["captions"]
+
+            if len(captions) != 5:
+                raise ValueError(
+                    f"La imagen {image_data['image_id']} "
+                    "no tiene exactamente cinco captions."
+                )
+
+            print(
+                f"Embeddings: {i + 1}/{n} "
+                f"(ID: {image_data['image_id']})"
+            )
+
+            result = encode_texts(
+                texts=captions,
+                tokenizer=tokenizer,
+                text_model=text_model,
+                device=device
+            )
+
+            if tuple(result.shape) != (5, 768):
+                raise ValueError(
+                    f"Shape incorrecto en la imagen {image_data['image_id']}"
+                )
+
+            result = result.detach().cpu().numpy()
+
+            if not np.isfinite(result).all():
+                raise ValueError(
+                    f"Embeddings no finitos en la imagen {image_data['image_id']}"
+                )
+
+            embeddings[i] = result.astype(np.float16)
+
+            embeddings.flush()
+            done[i] = True
+
+            if (i + 1) % 25 == 0 or i == n - 1:
+                save_progress(
+                    done, progress_path, metadata_path, n, signature
+                )
+                print(f"Progreso: {done.sum()}/{n}")
+
+        embeddings.flush()
+        save_progress(
+            done, progress_path, metadata_path, n, signature
+        )
+
+    finally:
+        del embeddings
+
+    print(f"Embeddings completados: {done.sum()}/{n}")
+
+def load_captions(captions_json_path):
+    """
+    Carga los captions de COCO y los agrupa por image_id.
+
+    Returns:
+        dict[int, list[str]]:
+            Cada image_id tiene asociada una lista de captions.
+    """
+    with open(captions_json_path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    captions_by_image = defaultdict(list)
+
+    for annotation in data["annotations"]:
+        image_id = annotation["image_id"]
+        caption = annotation["caption"].strip()
+
+        captions_by_image[image_id].append(caption)
+
+    return dict(captions_by_image)
+
+def save_captions_csv(images, output_dir):
+    """
+    Guarda las captions originales en un CSV para evaluar CLIP Score.
+
+    Genera una fila por caption, con las columnas image_id y caption.
+    """
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    csv_path = output_dir / "captions.csv"
+
+    with open(csv_path, "w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow(["image_id", "caption"])
+
+        for image_data in images:
+            image_id = image_data["image_id"]
+
+            for caption in image_data["captions"]:
+                writer.writerow([image_id, caption])
+
+    print(f"Captions guardadas en {csv_path}")
+
+def main():
     annotation_file = Path(
         "coco/annotations/person_keypoints_train2014.json"
     )
@@ -329,53 +807,33 @@ if __name__ == "__main__":
     )
     images_dir = Path("coco/train2014")
 
-    # Check that the paths exist.
-    if not annotation_file.exists():
-        raise FileNotFoundError(
-            f"Annotation file not found: {annotation_file}"
-        )
+    device = "cpu"
+    output_dir = Path("features/train")
 
-    if not captions_file.exists():
-        raise FileNotFoundError(
-            f"Captions file not found: {captions_file}"
-        )
-
-    if not images_dir.is_dir():
-        raise FileNotFoundError(
-            f"Images directory not found: {images_dir}"
-        )
-
-    # Load metadata for just one image.
     images = load_images(
         annotation_file=str(annotation_file),
         captions_file=str(captions_file),
         images_dir=str(images_dir),
-        max_images=1
+        max_images=None
     )
 
     if not images:
-        raise ValueError(
-            "No images with person bounding boxes and five captions "
-            "were found."
-        )
+        raise ValueError("No se encontraron imágenes válidas.")
 
-    # Select the first image.
-    image_data = images[0]
+    # Extraer o reanudar los latentes.
+    vae = loadVAE(device)
+    extract_dataset_latents(images, vae, output_dir, device)
+    del vae
 
-    print("Image ID:", image_data["image_id"])
-    print("Image path:", image_data["image_path"])
-    print("Bounding boxes:", image_data["bboxes"])
-
-    # Display the five captions.
-    print("\nCaptions:")
-    for i, caption in enumerate(image_data["captions"], start=1):
-        print(f"  {i}. {caption}")
-
-    # Check that the image has exactly five captions.
-    assert len(image_data["captions"]) == 5
-
-    # Display the original image and its preprocessed version.
-    test_preprocess_image(
-        image_path=str(image_data["image_path"]),
-        bboxes=image_data["bboxes"]
+    # Extraer o reanudar los embeddings.
+    tokenizer, text_model = load_clip(device)
+    extract_dataset_text_embeddings(
+        images, tokenizer, text_model, output_dir, device
     )
+    del text_model
+
+    print("Extracción completada.")
+
+
+if __name__ == "__main__":
+    main()
