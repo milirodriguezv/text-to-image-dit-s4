@@ -1,0 +1,12 @@
+Sample prompts used for periodic qualitative evaluation during training.
+Generated every 10,000 steps using EMA model, DPM-Solver++ (20 steps), CFG scale=4.0, seed=0.
+Output: 4x2 grid saved to results/000-DiT-S-4/samples/{step:07d}.png
+
+1. A dog sitting on a beach at sunset
+2. A red car parked in front of a building
+3. A woman riding a bicycle in a park
+4. A plate of food on a wooden table
+5. A cat sleeping on a couch
+6. A group of people playing baseball
+7. An airplane flying over mountains
+8. A vase of flowers next to a window
