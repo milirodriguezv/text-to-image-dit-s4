@@ -1,0 +1,100 @@
+{
+  "status": "complete",
+  "checkpoint_sha256": "f693fd7391979856e7059994643e755239276ba5d66a31becf1ebf1e18e93c6b",
+  "manifest_sha256": "30891a8f74d3f4c86514ce940caa891ac61d358183a2b6f7e4963e8e6e373837",
+  "preprocess": "center-crop",
+  "generation_device": "mps",
+  "metric_device": "mps",
+  "clip_device": "mps",
+  "finished_evaluations": [
+    {
+      "name": "intermediate_cfg4_2k",
+      "count": 2000,
+      "sampler": "dpm",
+      "steps": 20,
+      "cfg_scale": 4,
+      "fid": 94.19115041986481,
+      "clip_l14": 18.328969955444336,
+      "clip_b32": 24.11578941345215
+    },
+    {
+      "name": "final_dpm_cfg_1",
+      "count": 10000,
+      "sampler": "dpm",
+      "steps": 20,
+      "cfg_scale": 1.0,
+      "fid": 98.43703549686364,
+      "clip_l14": 15.345274925231934,
+      "clip_b32": 21.066003799438477
+    },
+    {
+      "name": "final_dpm_cfg_1.5",
+      "count": 10000,
+      "sampler": "dpm",
+      "steps": 20,
+      "cfg_scale": 1.5,
+      "fid": 87.02008636720035,
+      "clip_l14": 16.252727508544922,
+      "clip_b32": 22.166059494018555
+    },
+    {
+      "name": "final_dpm_cfg_2",
+      "count": 10000,
+      "sampler": "dpm",
+      "steps": 20,
+      "cfg_scale": 2.0,
+      "fid": 79.04652923172404,
+      "clip_l14": 16.916019439697266,
+      "clip_b32": 22.9278564453125
+    },
+    {
+      "name": "final_dpm_cfg_3",
+      "count": 10000,
+      "sampler": "dpm",
+      "steps": 20,
+      "cfg_scale": 3.0,
+      "fid": 71.97624669069734,
+      "clip_l14": 17.806882858276367,
+      "clip_b32": 23.776832580566406
+    },
+    {
+      "name": "final_dpm_cfg_4",
+      "count": 10000,
+      "sampler": "dpm",
+      "steps": 20,
+      "cfg_scale": 4.0,
+      "fid": 71.21680251149928,
+      "clip_l14": 18.271665573120117,
+      "clip_b32": 24.109088897705078
+    },
+    {
+      "name": "final_dpm_cfg_5",
+      "count": 10000,
+      "sampler": "dpm",
+      "steps": 20,
+      "cfg_scale": 5.0,
+      "fid": 73.23264744963802,
+      "clip_l14": 18.466073989868164,
+      "clip_b32": 24.207963943481445
+    },
+    {
+      "name": "final_ddpm_cfg_4",
+      "count": 10000,
+      "sampler": "ddpm",
+      "steps": 250,
+      "cfg_scale": 4.0,
+      "fid": 76.65541043180008,
+      "clip_l14": 18.31890296936035,
+      "clip_b32": 24.16663932800293
+    }
+  ],
+  "started": "2026-10-29T17:12:36.137273+01:00",
+  "training_step": 150000,
+  "phase": "complete",
+  "evaluation": "final_ddpm_cfg_4",
+  "images_done": 10000,
+  "images_target": 10000,
+  "updated": "2026-10-31T09:44:01.266097+01:00",
+  "ddpm_cfg_selection": "lowest FID-10K in the completed DPM sweep",
+  "ddpm_cfg": 4.0
+}

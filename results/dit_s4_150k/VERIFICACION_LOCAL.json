@@ -1,0 +1,21 @@
+{
+  "status": "PASS",
+  "reference_images_verified": 10000,
+  "generated_images_verified": 72000,
+  "evaluations": {
+    "final_dpm_cfg_1": 10000,
+    "final_dpm_cfg_1.5": 10000,
+    "final_dpm_cfg_2": 10000,
+    "final_dpm_cfg_3": 10000,
+    "final_dpm_cfg_4": 10000,
+    "final_dpm_cfg_5": 10000,
+    "intermediate_cfg4_2k": 2000,
+    "final_ddpm_cfg_4": 10000
+  },
+  "checkpoint_sha256": "f693fd7391979856e7059994643e755239276ba5d66a31becf1ebf1e18e93c6b",
+  "manifest_sha256": "30891a8f74d3f4c86514ce940caa891ac61d358183a2b6f7e4963e8e6e373837",
+  "code_sha256": "3571e59de622bf7f82589b21147a03a8fe2de3520850c599d48aa967379ae058",
+  "intermediate_code_sha256": "40c2c2c1b48dd903cd4fbbfbed9702249e05360337f094a3aef1684a615c7c7e",
+  "scope": "Integrity, PNG headers, pairing, seeds, protocol and saved metrics/CSV. Metrics are not recomputed.",
+  "seconds": 18.192124917171896
+}

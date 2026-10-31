@@ -145,7 +145,7 @@ All paths are inside `base_code/`.
 - `forward_with_cfg`: split `model_out[:, :self.in_channels]` (all 4 channels, not the repo's 3);
   `y = cat([e_prompt, e_null])`, conditional half first.
 - CHECK:
-  - Parameter count ≈ 33.4M.
+  - Parameter count ≈ 33.0M (33,003,776).
   - `model(randn(2,4,32,32), randint(0,1000,(2,)), randn(2,768))` → shape (2,8,32,32), all zeros at init.
 
 ### 6. `train.py`

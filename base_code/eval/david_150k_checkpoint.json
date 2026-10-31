@@ -1,0 +1,40 @@
+{
+  "checkpoint_sha256": "f693fd7391979856e7059994643e755239276ba5d66a31becf1ebf1e18e93c6b",
+  "size_bytes": 528048707,
+  "training": {
+    "weights": "ema",
+    "step": 150000,
+    "args": {
+      "feature_path": "/home/jupyter-lquijano/david/tfm/features/train",
+      "results_dir": "results",
+      "model": "DiT-S/4",
+      "image_size": 256,
+      "max_steps": 150000,
+      "global_batch_size": 128,
+      "global_seed": 0,
+      "lr": 0.0001,
+      "cfg_dropout": 0.15,
+      "num_workers": 4,
+      "log_every": 100,
+      "ckpt_every": 10000,
+      "permanent_ckpt_every": 50000,
+      "sample_every": 10000,
+      "resume": null,
+      "use_amp": "auto"
+    }
+  },
+  "model": "DiT-S/4",
+  "strict_state_dict_match": true,
+  "parameter_count": 33003776,
+  "state_dict_entries": 136,
+  "all_weights_finite": true,
+  "null_shape": [
+    1,
+    768
+  ],
+  "null_norm": 0.0,
+  "null_condition": "zeros_from_training_checkpoint",
+  "warnings": [
+    "The checkpoint uses a zero null condition. Preserve it for evaluation with --allow-zero-null; do not replace it with CLIP empty text after training."
+  ]
+}

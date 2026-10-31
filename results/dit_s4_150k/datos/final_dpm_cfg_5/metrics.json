@@ -1,0 +1,82 @@
+{
+  "schema": 1,
+  "run": "/Users/danicruz/dit/base_code/results/david_150k/full_evaluation/final_dpm_cfg_5/run.json",
+  "run_sha256": "6dac1374ed9d0e04cedaa1b1b102649454c06a51b117c340500faee9231c1edf",
+  "config": {
+    "manifest": "/Users/danicruz/dit/base_code/results/references_val2014_10k_seed0/manifest.json",
+    "manifest_sha256": "30891a8f74d3f4c86514ce940caa891ac61d358183a2b6f7e4963e8e6e373837",
+    "checkpoint": "/Users/danicruz/dit/checkpoints/david/last.pt",
+    "checkpoint_sha256": "f693fd7391979856e7059994643e755239276ba5d66a31becf1ebf1e18e93c6b",
+    "checkpoint_step": 150000,
+    "model": "DiT-S/4",
+    "weights": "ema",
+    "count": 10000,
+    "preprocess": "center-crop",
+    "sampler": "dpm",
+    "steps": 20,
+    "cfg_scale": 5.0,
+    "seed": 0,
+    "batch_size": 8,
+    "device": "mps",
+    "clip": "openai/clip-vit-large-patch14",
+    "vae": "stabilityai/sd-vae-ft-ema",
+    "versions": {
+      "torch": "2.14.1",
+      "torchvision": "0.29.1",
+      "timm": "1.0.30",
+      "diffusers": "0.35.2",
+      "transformers": "4.57.6",
+      "torchmetrics": "1.9.0",
+      "clean-fid": "0.1.35"
+    },
+    "code_sha256": "3571e59de622bf7f82589b21147a03a8fe2de3520850c599d48aa967379ae058",
+    "runtime": {
+      "hardware": "Apple Silicon MPS",
+      "cuda": null,
+      "cudnn": null,
+      "num_threads": 2,
+      "matmul_tf32": false,
+      "cudnn_tf32": true
+    },
+    "training": {
+      "weights": "ema",
+      "step": 150000,
+      "args": {
+        "feature_path": "/home/jupyter-lquijano/david/tfm/features/train",
+        "results_dir": "results",
+        "model": "DiT-S/4",
+        "image_size": 256,
+        "max_steps": 150000,
+        "global_batch_size": 128,
+        "global_seed": 0,
+        "lr": 0.0001,
+        "cfg_dropout": 0.15,
+        "num_workers": 4,
+        "log_every": 100,
+        "ckpt_every": 10000,
+        "permanent_ckpt_every": 50000,
+        "sample_every": 10000,
+        "resume": null,
+        "use_amp": "auto"
+      }
+    },
+    "null_condition": "zeros_from_training_checkpoint"
+  },
+  "fid": 73.23264744963802,
+  "fid_label": "FID-10000",
+  "fid_implementation": "clean-fid/clean/inception_v3",
+  "clip_l14": 18.466073989868164,
+  "clip_b32": 24.207963943481445,
+  "metric_device": "mps",
+  "metric_batch_size": 32,
+  "clip_device": "mps",
+  "metric_versions": {
+    "torch": "2.14.1",
+    "torchvision": "0.29.1",
+    "timm": "1.0.30",
+    "diffusers": "0.35.2",
+    "transformers": "4.57.6",
+    "torchmetrics": "1.9.0",
+    "clean-fid": "0.1.35"
+  }
+}

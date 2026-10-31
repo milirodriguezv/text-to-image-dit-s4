@@ -1,0 +1,114 @@
+[
+  {
+    "image_id": 434763,
+    "caption": "A white plate with sausage, eggs and other meat.",
+    "real": "muestras/000000434763/real.png",
+    "generated": {
+      "final_dpm_cfg_1": "muestras/000000434763/final_dpm_cfg_1.png",
+      "final_dpm_cfg_1.5": "muestras/000000434763/final_dpm_cfg_1.5.png",
+      "final_dpm_cfg_2": "muestras/000000434763/final_dpm_cfg_2.png",
+      "final_dpm_cfg_3": "muestras/000000434763/final_dpm_cfg_3.png",
+      "final_dpm_cfg_4": "muestras/000000434763/final_dpm_cfg_4.png",
+      "final_dpm_cfg_5": "muestras/000000434763/final_dpm_cfg_5.png",
+      "final_ddpm_cfg_4": "muestras/000000434763/final_ddpm_cfg_4.png"
+    }
+  },
+  {
+    "image_id": 332058,
+    "caption": "A man walking into the ocean while holding a surfboard.",
+    "real": "muestras/000000332058/real.png",
+    "generated": {
+      "final_dpm_cfg_1": "muestras/000000332058/final_dpm_cfg_1.png",
+      "final_dpm_cfg_1.5": "muestras/000000332058/final_dpm_cfg_1.5.png",
+      "final_dpm_cfg_2": "muestras/000000332058/final_dpm_cfg_2.png",
+      "final_dpm_cfg_3": "muestras/000000332058/final_dpm_cfg_3.png",
+      "final_dpm_cfg_4": "muestras/000000332058/final_dpm_cfg_4.png",
+      "final_dpm_cfg_5": "muestras/000000332058/final_dpm_cfg_5.png",
+      "final_ddpm_cfg_4": "muestras/000000332058/final_ddpm_cfg_4.png"
+    }
+  },
+  {
+    "image_id": 117237,
+    "caption": "A bird sitting in a field of beautiful purple flowers.",
+    "real": "muestras/000000117237/real.png",
+    "generated": {
+      "final_dpm_cfg_1": "muestras/000000117237/final_dpm_cfg_1.png",
+      "final_dpm_cfg_1.5": "muestras/000000117237/final_dpm_cfg_1.5.png",
+      "final_dpm_cfg_2": "muestras/000000117237/final_dpm_cfg_2.png",
+      "final_dpm_cfg_3": "muestras/000000117237/final_dpm_cfg_3.png",
+      "final_dpm_cfg_4": "muestras/000000117237/final_dpm_cfg_4.png",
+      "final_dpm_cfg_5": "muestras/000000117237/final_dpm_cfg_5.png",
+      "final_ddpm_cfg_4": "muestras/000000117237/final_ddpm_cfg_4.png"
+    }
+  },
+  {
+    "image_id": 57703,
+    "caption": "A man and two women walking their dogs and hiking in the woods.",
+    "real": "muestras/000000057703/real.png",
+    "generated": {
+      "final_dpm_cfg_1": "muestras/000000057703/final_dpm_cfg_1.png",
+      "final_dpm_cfg_1.5": "muestras/000000057703/final_dpm_cfg_1.5.png",
+      "final_dpm_cfg_2": "muestras/000000057703/final_dpm_cfg_2.png",
+      "final_dpm_cfg_3": "muestras/000000057703/final_dpm_cfg_3.png",
+      "final_dpm_cfg_4": "muestras/000000057703/final_dpm_cfg_4.png",
+      "final_dpm_cfg_5": "muestras/000000057703/final_dpm_cfg_5.png",
+      "final_ddpm_cfg_4": "muestras/000000057703/final_ddpm_cfg_4.png"
+    }
+  },
+  {
+    "image_id": 377361,
+    "caption": "A woman smiling while standing next to a giraffe.",
+    "real": "muestras/000000377361/real.png",
+    "generated": {
+      "final_dpm_cfg_1": "muestras/000000377361/final_dpm_cfg_1.png",
+      "final_dpm_cfg_1.5": "muestras/000000377361/final_dpm_cfg_1.5.png",
+      "final_dpm_cfg_2": "muestras/000000377361/final_dpm_cfg_2.png",
+      "final_dpm_cfg_3": "muestras/000000377361/final_dpm_cfg_3.png",
+      "final_dpm_cfg_4": "muestras/000000377361/final_dpm_cfg_4.png",
+      "final_dpm_cfg_5": "muestras/000000377361/final_dpm_cfg_5.png",
+      "final_ddpm_cfg_4": "muestras/000000377361/final_ddpm_cfg_4.png"
+    }
+  },
+  {
+    "image_id": 246562,
+    "caption": "A man on a horse watching another man wrestle a cow.",
+    "real": "muestras/000000246562/real.png",
+    "generated": {
+      "final_dpm_cfg_1": "muestras/000000246562/final_dpm_cfg_1.png",
+      "final_dpm_cfg_1.5": "muestras/000000246562/final_dpm_cfg_1.5.png",
+      "final_dpm_cfg_2": "muestras/000000246562/final_dpm_cfg_2.png",
+      "final_dpm_cfg_3": "muestras/000000246562/final_dpm_cfg_3.png",
+      "final_dpm_cfg_4": "muestras/000000246562/final_dpm_cfg_4.png",
+      "final_dpm_cfg_5": "muestras/000000246562/final_dpm_cfg_5.png",
+      "final_ddpm_cfg_4": "muestras/000000246562/final_ddpm_cfg_4.png"
+    }
+  },
+  {
+    "image_id": 531607,
+    "caption": "Two giraffes are running through a bushy savannah.",
+    "real": "muestras/000000531607/real.png",
+    "generated": {
+      "final_dpm_cfg_1": "muestras/000000531607/final_dpm_cfg_1.png",
+      "final_dpm_cfg_1.5": "muestras/000000531607/final_dpm_cfg_1.5.png",
+      "final_dpm_cfg_2": "muestras/000000531607/final_dpm_cfg_2.png",
+      "final_dpm_cfg_3": "muestras/000000531607/final_dpm_cfg_3.png",
+      "final_dpm_cfg_4": "muestras/000000531607/final_dpm_cfg_4.png",
+      "final_dpm_cfg_5": "muestras/000000531607/final_dpm_cfg_5.png",
+      "final_ddpm_cfg_4": "muestras/000000531607/final_ddpm_cfg_4.png"
+    }
+  },
+  {
+    "image_id": 137727,
+    "caption": "A motorized cart fills a train with luggage",
+    "real": "muestras/000000137727/real.png",
+    "generated": {
+      "final_dpm_cfg_1": "muestras/000000137727/final_dpm_cfg_1.png",
+      "final_dpm_cfg_1.5": "muestras/000000137727/final_dpm_cfg_1.5.png",
+      "final_dpm_cfg_2": "muestras/000000137727/final_dpm_cfg_2.png",
+      "final_dpm_cfg_3": "muestras/000000137727/final_dpm_cfg_3.png",
+      "final_dpm_cfg_4": "muestras/000000137727/final_dpm_cfg_4.png",
+      "final_dpm_cfg_5": "muestras/000000137727/final_dpm_cfg_5.png",
+      "final_ddpm_cfg_4": "muestras/000000137727/final_ddpm_cfg_4.png"
+    }
+  }
+]

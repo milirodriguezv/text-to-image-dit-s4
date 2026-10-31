@@ -1,0 +1,15 @@
+# Persona 4 environment verified on Python 3.11 / CPU. Install in a virtualenv.
+# On the training GPU, use the matching CUDA builds of torch/torchvision.
+torch==2.14.1
+torchvision==0.29.1
+timm==1.0.30
+diffusers==0.35.2
+# torchmetrics 1.9 CLIPScore expects tensor features (Transformers 4 API).
+transformers==4.57.6
+torchmetrics[multimodal]==1.9.0
+clean-fid==0.1.35
+numpy==2.4.6
+Pillow==13.0.0
+scipy==1.17.1
+matplotlib==3.11.2
+pytest==9.1.1

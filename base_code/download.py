@@ -15,18 +15,24 @@ import os
 pretrained_models = {'DiT-XL-2-512x512.pt', 'DiT-XL-2-256x256.pt'}
 
 
-def find_model(model_name):
+def find_model(model_name, *, return_metadata=False):
     """
     Finds a pre-trained DiT model, downloading it if necessary. Alternatively, loads a model from a local path.
     """
     if model_name in pretrained_models:  # Find/download our pre-trained DiT checkpoints
-        return download_model(model_name)
+        state = download_model(model_name)
+        return (state, {"weights": "pretrained"}) if return_metadata else state
     else:  # Load a custom DiT checkpoint:
         assert os.path.isfile(model_name), f'Could not find DiT checkpoint at {model_name}'
-        checkpoint = torch.load(model_name, map_location=lambda storage, loc: storage)
+        # Project checkpoints contain argparse.Namespace under "args". Only load trusted files.
+        checkpoint = torch.load(model_name, map_location="cpu", weights_only=False)
+        metadata = {"weights": "exported_state_dict", "step": None, "args": {}}
         if "ema" in checkpoint:  # supports checkpoints from train.py
+            args = checkpoint.get("args", {})
+            metadata = {"weights": "ema", "step": checkpoint.get("step"),
+                        "args": args if isinstance(args, dict) else vars(args)}
             checkpoint = checkpoint["ema"]
-        return checkpoint
+        return (checkpoint, metadata) if return_metadata else checkpoint
 
 
 def download_model(model_name):
