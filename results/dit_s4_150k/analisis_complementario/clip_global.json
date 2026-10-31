@@ -1,0 +1,27 @@
+{
+  "count": 10000,
+  "scores": {
+    "real": {
+      "clip_l14": 25.56430616197586,
+      "clip_b32": 30.150115384578704
+    },
+    "generated": {
+      "clip_l14": 18.271663184547425,
+      "clip_b32": 24.109092725467683
+    }
+  },
+  "control": {
+    "clip_l14": {
+      "original": 18.271665573120117,
+      "recomputed": 18.271663184547425,
+      "absolute_difference": 2.388572692524349e-06,
+      "tolerance": 0.001
+    },
+    "clip_b32": {
+      "original": 24.109088897705078,
+      "recomputed": 24.109092725467683,
+      "absolute_difference": 3.827762604657892e-06,
+      "tolerance": 0.001
+    }
+  }
+}

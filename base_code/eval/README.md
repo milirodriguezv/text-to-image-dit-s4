@@ -156,3 +156,39 @@ simuladas e integración. No sustituyen la evaluación real ni descargan modelos
 `eval.build_colab` se conserva como generador de un cuaderno portable y forma parte
 de la huella de código del experimento; no se incluyen los diagnósticos ni intentos
 parciales de Colab en la entrega de resultados.
+
+## Análisis complementario sin generación nueva
+
+`../analyze_evaluation.py` calcula CLIP L/14 y B/32 de las reales y generadas,
+selecciona grupos equilibrados según anotaciones de personas y calcula FID-N.
+Requiere los 10.000 PNG reales y los 10.000 PNG generados completos, con su
+`run.json`, manifest y `metrics.json`; los ejemplos del repositorio no bastan.
+
+Si aún no se ha extraído el JSON de keypoints del ZIP oficial ya descargado:
+
+```bash
+unzip -n ../coco/annotations_trainval2014.zip annotations/person_keypoints_val2014.json -d ../coco
+```
+
+Desde `base_code/`, con el entorno de evaluación activo:
+
+```bash
+OMP_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2 VECLIB_MAXIMUM_THREADS=2 python analyze_evaluation.py \
+  --run results/reproduccion_150k/final_dpm_cfg_4/run.json \
+  --person-annotations ../coco/annotations/person_keypoints_val2014.json \
+  --output ../results/dit_s4_150k/analisis_complementario \
+  --cache results/cache_analisis_150k --device mps --batch-size 32 --seed 0
+```
+
+El directorio de salida debe ser nuevo o corresponder exactamente a los mismos
+inputs, código y configuración. Las cachés de features deben estar fuera del
+resultado versionado. El dispositivo y las versiones deben coincidir con las
+métricas del run analizado; hay controles que reproducen esas métricas globales.
+No se carga el DiT ni se generan imágenes. El script conserva scores por imagen,
+IDs, métricas y hashes, con bloques cacheados para continuar una interrupción.
+
+Los [resultados entregados](../../results/dit_s4_150k/analisis_complementario/INFORME.md)
+usan 4.750 IDs por grupo, seleccionados dentro del manifest original de 10K. La
+clasificación describe anotaciones de la foto original, no necesariamente personas
+visibles en el recorte ni captions que hablen de ellas. El análisis no cambia el
+recorte central, no prueba causas ni significación, y no compara FID-N con FID-10K.

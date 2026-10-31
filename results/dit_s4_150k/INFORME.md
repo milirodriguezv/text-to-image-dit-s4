@@ -57,3 +57,45 @@ Las gráficas y el CSV del barrido están en `figuras/`. Los ejemplos están en 
 ## Revisión visual y texto para la memoria
 
 Véase [ANALISIS_VISUAL.md](ANALISIS_VISUAL.md), con los ocho ejemplos fijos y las conclusiones limitadas al checkpoint evaluado.
+
+## Análisis complementario: referencia real y grupos por personas
+
+Se reutilizan los mismos PNG, captions y checkpoint de DPM-Solver++20, CFG 4.
+No se ha entrenado ni generado de nuevo. Se mantienen el recorte central y la
+condición nula de ceros del checkpoint.
+
+### CLIP sobre las mismas 10.000 parejas
+
+| Imágenes | CLIP L/14 ↑ | CLIP B/32 ↑ |
+|---|---:|---:|
+| Reales | 25.5643 | 30.1501 |
+| Generadas | 18.2717 | 24.1091 |
+
+### Grupos equilibrados
+
+De los 10.000 IDs, 5.250 tienen al menos una anotación de persona y 4.750 no.
+Se toman 4.750 de cada grupo con semilla 0; la tabla global anterior sigue usando
+los 10.000 IDs completos. Las fotos y captions conservan su emparejamiento.
+
+| Grupo según anotaciones | N | FID-N ↓ | CLIP L/14 generadas | CLIP L/14 reales | CLIP B/32 generadas | CLIP B/32 reales |
+|---|---:|---:|---:|---:|---:|---:|
+| Con anotaciones de personas | 4750 | 56.3083 | 19.7638 | 25.5768 | 25.8457 | 30.0862 |
+| Sin anotaciones de personas | 4750 | 116.3012 | 16.6117 | 25.5185 | 22.1943 | 30.2021 |
+
+En esta selección, el grupo con anotaciones obtiene menor FID y mayor CLIP generado
+en ambas variantes. Los CLIP de las fotos reales son similares entre grupos.
+Esto es compatible con un rendimiento distinto por tipo de escena, pero no prueba
+que el filtro del entrenamiento sea su causa: los grupos también difieren en
+contenido, captions y composición.
+
+La etiqueta procede de la foto original y no garantiza que la persona sea visible
+en el recorte central o que se mencione en la caption. FID-4750 no se compara
+directamente con FID-10K; CLIP real es una referencia, no un techo ni un porcentaje
+de calidad. Una sola selección y semilla no establecen significación estadística.
+
+Los controles reprodujeron las métricas globales previas: diferencias absolutas
+menores de 0,000004 en CLIP y 0,000013 en FID. Los PNG se verificaron antes y después.
+
+[Protocolo, controles y tabla completa](analisis_complementario/INFORME.md),
+[CSV de grupos](analisis_complementario/metricas_grupos.csv) e
+[IDs seleccionados](analisis_complementario/ids_grupos.json).

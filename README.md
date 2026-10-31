@@ -29,6 +29,18 @@ CLIP Score no es un porcentaje de aciertos. No se han medido intervalos de confi
 - [Uso del pipeline y reproducción](base_code/eval/README.md).
 - [Entrenamiento publicado por David](README_training.md).
 
+## Análisis complementario
+
+Sobre las mismas imágenes de DPM20/CFG4, el CLIP de las fotos reales es **25,5643**
+(L/14) y **30,1501** (B/32), frente a **18,2717** y **24,1091** de las generadas.
+En dos grupos equilibrados de 4.750 IDs, FID-4750 es **56,3083** con anotaciones de
+personas y **116,3012** sin ellas; ambos CLIP generados también son mayores en el
+primer grupo. Son diferencias descriptivas, no una explicación causal ni una
+comparación directa con FID-10K.
+
+[Protocolo, tablas y controles](results/dit_s4_150k/analisis_complementario/INFORME.md).
+Los IDs se fijan con semilla 0 y se conservan el recorte central y las imágenes.
+
 ## Organización
 
 - `base_code/`: arquitectura, datos, sampling, métricas y pruebas.
@@ -56,7 +68,7 @@ Las pruebas validan funcionamiento e integración; las métricas proceden de la
 evaluación real. El código original por clases se conserva en `base_code/train.py`,
 `sample.py` y `sample_ddp.py`; para el modelo textual se usa `sample_t2i.py`.
 
-Comprobado en esta entrega: **45 tests pasan y uno se omite por requerir CUDA**;
+Comprobado en esta entrega: **50 tests pasan y uno se omite por requerir CUDA**;
 los datos, gráficas y ejemplos compactos coinciden con los originales verificados.
 La huella del código de evaluación coincide con los siete experimentos finales.
 Se verificaron 72.000 PNG generados y 10.000 referencias en el archivo completo;
