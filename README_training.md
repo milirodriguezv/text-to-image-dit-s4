@@ -1,6 +1,6 @@
 # DiT-S/4 Text-Conditioned Training
 
-Se usa **AdamW lr=1e-4, weight_decay=0, batch=256, T=1000, β lineal 1e-4→0.02, EMA=0.9999** siguiendo exactamente el paper (Peebles & Xie, 2023). DiT-S/4 (depth=12, d=384, patch=4, ~33M params) es la variante más ligera del paper, escogida por el presupuesto de cómputo (RTX 3090). La pérdida híbrida MSE + 0.001·VLB con `learn_sigma=True` se mantiene igual que en el paper.
+Se usa **AdamW lr=1e-4, weight_decay=0, batch=128, T=1000, β lineal 1e-4→0.02, EMA=0.9999** siguiendo exactamente el paper (Peebles & Xie, 2023). DiT-S/4 (depth=12, d=384, patch=4, ~33M params) es la variante más ligera del paper, escogida por el presupuesto de cómputo (RTX 3090). La pérdida híbrida MSE + 0.001·VLB con `learn_sigma=True` se mantiene igual que en el paper.
 
 **Hiperparámetros nuevos introducidos por el condicionamiento textual (no existen en el paper original):**
 - `cfg_dropout=0.15`: probabilidad de sustituir el embedding de texto por el embedding nulo ∅ durante el entrenamiento, necesario para habilitar Classifier-Free Guidance en inferencia.
