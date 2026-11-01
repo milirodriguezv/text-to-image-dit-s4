@@ -603,6 +603,9 @@ _(Date each entry. Include bugs found, anything that deviated from the plan, and
   - **Audit of the README commands (real small COCO subset: 16 train, 32 val, 8 generated images):** features,
     20 training steps, checkpoint download, generation and metrics ran without errors. The checkpoint SHA-256
     matched. Not run: the `train2014.zip` download, full `execute_plan`, the analyses, anything at full scale.
+- **01/11 — Tutorial notebook added, as the course brief requires.** `notebooks/text_to_image_tutorial.ipynb`,
+  executed from start to end with the real checkpoint on MPS and stored with its outputs. It adds no results: its
+  100-step training demonstration on 8 images is not an experiment, and its tables read the stored evaluation.
 
 ---
 
@@ -658,5 +661,6 @@ Everything versioned is on `main`.
 | Training log | `outputs/training/log.txt` |
 | Numeric traces and per-image scores | `outputs/evaluation/dit_s4_150k/datos/` and `analisis_complementario/` |
 | Code | `dit_base/` (paper code) and `src/` (new code); see `README.md` |
+| Tutorial notebook | `notebooks/text_to_image_tutorial.ipynb` |
 | Checkpoint | `last.pt`, not in git; public Drive link in `README.md` and `src/eval/fetch_checkpoint.py` |
 | Full 10K PNG sets | Not in git; held by Dani. Can be regenerated with `eval.execute_plan` |

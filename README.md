@@ -71,6 +71,7 @@ of flowers next to a window.
 dit_base/   Paper code: diffusion/ (unchanged), models.py and download.py (adapted), LICENSE.txt
 src/        New code: features, dataset, training, sampling and evaluation (eval/)
 tests/      Tests
+notebooks/  Tutorial notebook
 outputs/    training/ (log and grids every 10K steps), evaluation/dit_s4_150k/ (metrics, traces, figures, examples)
 ```
 
@@ -82,6 +83,16 @@ outputs/    training/ (log and grids every 10K steps), evaluation/dit_s4_150k/ (
 | `sample_t2i.py` | Image generation from text |
 | `eval/`, `analyze_evaluation.py`, `report_evaluation.py`, `verify_evaluation.py` | Evaluation and analyses |
 
+
+## Tutorial notebook
+
+[`notebooks/text_to_image_tutorial.ipynb`](notebooks/text_to_image_tutorial.ipynb) walks through the model step by step, and it
+is stored with its outputs so you can read it without running anything: VAE latents, CLIP embeddings,
+DiT-S/4 conditioning, a short training demonstration, generation from text, the guidance scale, and the stored results.
+
+To run it, use the environment from step 1 below, then `pip install jupyter` and
+`jupyter notebook notebooks/text_to_image_tutorial.ipynb`. It downloads the checkpoint and the CLIP and VAE
+weights, and needs neither COCO nor a GPU.
 
 ## What is not in git
 
