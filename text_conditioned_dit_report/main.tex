@@ -319,7 +319,6 @@ These are examples, not a global measure, and they do not show that one sampler 
     \item \textbf{Reduced training data.} Only about 45K of the roughly 83K images in the training set could be used, these are the ones that include people in it. The model therefore saw a little over half of the planned training set.
   \item \textbf{No hyperparameter search.} The computational cost of training ruled out a hyperparameter study. The hyperparameters were taken from the DiT paper, with a few adjusted to our setting, so the final run is not a tuned configuration.
   \item \textbf{One seed, one checkpoint.} All metrics come from one seed and the 150K checkpoint; FID-2K exists only at 150K, so there is no convergence curve and no claim about convergence can be made.
-  \item \textbf{Missing sanity checks.} The overfit test, the VAE round trip and the fp32 vs bf16 comparison were not run separately; the training-time samples provide only indirect validation, and some implementation issues cannot be excluded.
   \item \textbf{Null embedding.} $\nullemb$ is all zeros, not CLIP(\texttt{""}) as specified. The MLP maps it to a constant $\yemb$ that the model learns as ``no caption'', similar to DiT's learned null embedding.
   \item \textbf{Feature provenance.} The training features were produced by the final version of the extraction script, which stores unscaled statistics so that 0.18215 is applied once, and this was reported in the internal review;
 \end{itemize}
