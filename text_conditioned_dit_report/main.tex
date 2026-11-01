@@ -153,7 +153,7 @@ DPM-Solver++ is deterministic and ignores $\Sigma_\theta$.
 The specification planned 82,783 train2014 images with a center crop, batch 256 and 400K steps on a GPU, with $\nullemb$ set to the frozen CLIP embedding of the empty caption.
 The single completed run deviates from it as summarized in Table~\ref{tab:deviations}.
 It trained on the 45,174 train2014 images that have at least one person box and five captions.
-Each image was cropped to a square around the union of person boxes with a 20\% margin, clipped to the image and resized (bicubic) to 256.
+Each image was cropped to a square around the union of person boxes with a 20\% margin, clipped to the image and resized (bicubic) to 256. 
 Training used AdamW (learning rate $10^{-4}$, weight decay 0, no warmup, no gradient clipping), global batch 128 and 150,000 steps ($\approx$425 epochs), with bf16 autocast on the model forward only, on a CPU with AVX-512 BF16 at $\approx$2.0 steps/s ($\approx$21 h).
 Because the training script did not pass the null-embedding file, $\nullemb$ remained all zeros; sampling and evaluation take $\nullemb$ from the checkpoint, so training, sampling and evaluation use the same unconditional signal.
 Every 10K steps the script saved a checkpoint and a grid of 8 fixed prompts (EMA, DPM-Solver++ 20 steps, $s=4$, seed 0).
@@ -316,12 +316,12 @@ These are examples, not a global measure, and they do not show that one sampler 
 \subsection{Limitations}
 
 \begin{itemize}
-  \item \textbf{Train/evaluation mismatch.} The model was trained on person-centered crops of images with people, while evaluation used unfiltered val2014 images with a center crop. Absolute FID and CLIP Score therefore mix model quality with generalization beyond the training domain, and the two cannot be separated with the current numbers.
+    \item \textbf{Reduced training data.} Only about 45K of the roughly 83K images in the training set could be used, these are the ones that include people in it. The model therefore saw a little over half of the available data, which limits both sample quality and diversity and contributes to the gap with the reported results.
+  \item \textbf{No hyperparameter search.} The computational cost of training ruled out a hyperparameter study. The hyperparameters were taken from the DiT paper, with a few adjusted to our setting, so we cannot tell whether the configuration is suitable for this data and model size, or how much of the quality gap it explains.
   \item \textbf{One seed, one checkpoint.} All metrics come from one seed and the 150K checkpoint; FID-2K exists only at 150K, so there is no convergence curve and no claim about convergence can be made.
   \item \textbf{Missing sanity checks.} The overfit test, the VAE round trip and the fp32 vs bf16 comparison were not run separately; the training-time samples provide only indirect validation. A code error therefore cannot be fully ruled out, and the poor quality cannot be attributed to a single cause (limited training, reduced data, the train/evaluation mismatch or an error).
   \item \textbf{Null embedding.} $\nullemb$ is all zeros, not CLIP(\texttt{""}) as specified. The MLP maps it to a constant $\yemb$ that the model learns as ``no caption'', similar to DiT's learned null class, and it is used consistently in training, sampling and evaluation. We expect no large effect, but no run with CLIP(\texttt{""}) exists to compare against.
   \item \textbf{Feature provenance.} That the training features were produced by the final version of the extraction script, which stores unscaled statistics so that 0.18215 is applied once, was reported by the team member who ran training and was not independently verified.
-  \item \textbf{Resume bug.} After loading a checkpoint, the training script overwrites the EMA weights with the current weights. This run did not resume, so it is unaffected, but the bug must be fixed before training continues from 150K.
 \end{itemize}
 
 % ---------------------------------------------------------------------------
