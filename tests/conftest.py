@@ -1,6 +1,6 @@
 """
 Shared pytest fixtures for the DiT-S/4 text-conditioning tests.
-Puts base_code/ on sys.path so `models` and `diffusion` import from any working directory.
+Puts dit_base/ and src/ on sys.path so the project imports from any working directory.
 """
 import os
 import sys
@@ -10,9 +10,10 @@ import pytest
 import torch
 import torch.nn as nn
 
-BASE_CODE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if BASE_CODE not in sys.path:
-    sys.path.insert(0, BASE_CODE)
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+for folder in (ROOT, os.path.join(ROOT, "dit_base"), os.path.join(ROOT, "src")):
+    if os.path.isdir(folder) and folder not in sys.path:
+        sys.path.insert(0, folder)
 
 from models import DiT_models  # noqa: E402
 

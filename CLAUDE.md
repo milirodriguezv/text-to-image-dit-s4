@@ -40,7 +40,7 @@ adaLN-Zero · DiT-S/4 · p=4 · d=384 · T=64 tokens · s = CFG scale.
 | Metrics | FID-10K via clean-fid (FID-2K for intermediate ckpts); CLIP Score ViT-L/14 (primary) + ViT-B/32 |
 
 
-## Original-code facts to rely on (verified in `base_code/`)
+## Original-code facts to rely on (verified in `dit_base/` and the original repo)
 - **`training_losses`** (`diffusion/gaussian_diffusion.py`) returns per-sample `[N]` tensors under
   `"loss"`, `"mse"` and `"vb"`. Take `.mean()` of each for logging.
   - `loss_type` is plain `MSE`, not `RESCALED_MSE`, so `vb` is not rescaled.
@@ -77,23 +77,28 @@ adaLN-Zero · DiT-S/4 · p=4 · d=384 · T=64 tokens · s = CFG scale.
   - `environment.yml` pins only `pytorch>=1.13`. On PyTorch ≥2.6, `torch.load` defaults to
     `weights_only=True` and fails on our checkpoints, which contain an argparse `Namespace` under
     `"args"`. Pass `weights_only=False`, or save `vars(args)`.
-- **Class-conditional leftovers:** once `models.py` is modified, `sample.py`, `sample_ddp.py`,
+- **Class-conditional leftovers (deleted on 01/11, in git history):** once `models.py` is modified, `sample.py`, `sample_ddp.py`,
   `download.py`'s pretrained XL/2 weights and `run_DiT.ipynb` no longer work. They hardcode
   `y_null = 1000`, `--num-classes` and class-label lists. Treat them as reference only.
 - `models.py` imports `PatchEmbed`, `Attention` and `Mlp` from `timm.models.vision_transformer`.
 
 ## Repository map
-All paths are inside `base_code/`.
-| File | Status | Role |
+| Path | Status | Role |
 |---|---|---|
-| `models.py` | MODIFY | Replace `LabelEmbedder` with `TextEmbedder`; fix `forward_with_cfg` |
-| `diffusion/` | DO NOT EDIT | Schedule, `q_sample`, `training_losses` (hybrid loss), DDPM/DDIM loops |
-| `train.py` | MODIFY | Load precomputed features, `y = e_pooled`, resume, max-steps, periodic sampling |
-| `extract_features.py` | NEW | Offline VAE + CLIP encoding to disk |
-| `datasets_t2i.py` | NEW | `CocoLatentDataset` over memory-mapped arrays |
-| `sample_t2i.py` | NEW | Text-prompt sampling: DPM-Solver++ 20 / DDPM 250, CFG |
-| `eval/` | NEW | 10K generation, FID-10K (clean-fid), CLIP Score (torchmetrics) |
-| `sample.py`, `sample_ddp.py` | REFERENCE | Adapt `sample_ddp.py` batching/npz logic for eval |
+| `dit_base/models.py` | Adapted | `TextEmbedder` replaces `LabelEmbedder`; `forward_with_cfg` fixed |
+| `dit_base/diffusion/` | DO NOT EDIT | Schedule, `q_sample`, `training_losses` (hybrid loss), DDPM/DDIM loops |
+| `dit_base/download.py`, `LICENSE.txt` | Adapted / keep | `find_model`; original license, required |
+| `src/train.py` | New | Precomputed features, `y = e_pooled`, resume, max-steps, periodic sampling |
+| `src/extract_features.py`, `createCSV.py`, `make_null_embedding.py`, `text_utils.py` | New | Offline VAE + CLIP encoding to disk |
+| `src/dataset_t2i.py` | New | `CocoLatentDataset` over memory-mapped arrays |
+| `src/sample_t2i.py` | New | Text-prompt sampling: DPM-Solver++ 20 / DDPM 250, CFG |
+| `src/eval/`, `src/analyze_evaluation.py`, `src/report_evaluation.py`, `src/verify_evaluation.py` | New | Generation, FID (clean-fid), CLIP Score, analyses |
+| `tests/` | New | Tests |
+| `outputs/` | Results | `training/` (log, grids), `evaluation/dit_s4_150k/`; new runs in `outputs/runs/`, not versioned |
+| `docs/` | Docs | `REPORT_NOTES.md`, work split, training and evaluation guides |
+
+Run with `export PYTHONPATH="$PWD/dit_base:$PWD/src"` from the repo root. The steps below are the original
+plan and keep the original file names; `docs/REPORT_NOTES.md` §2.1 records what was actually built.
 
 ## Implementation steps (in order)
 
@@ -199,8 +204,8 @@ All paths are inside `base_code/`.
   (~1,240 epochs over 82,783 images).
 
 ## Rules for Claude when working in this repo
-- Do not edit `diffusion/`. Keep the original DiT code structure; add new files rather than rewriting.
+- Do not edit `diffusion/`. Keep paper code in `dit_base/` and new code in `src/`.
 - Keep the adaLN-Zero zero-initialization intact.
-- Any deviation from the table above must be flagged and recorded in `REPORT_NOTES.md`.
+- Any deviation from the table above must be flagged and recorded in `docs/REPORT_NOTES.md`.
 - When a hyperparameter isn't specified here, say so instead of assuming.
-- Update `REPORT_NOTES.md` (changes log + results tables) whenever code behavior or results change.
+- Update `docs/REPORT_NOTES.md` (changes log + results tables) whenever code behavior or results change.

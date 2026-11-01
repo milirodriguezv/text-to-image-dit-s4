@@ -13,11 +13,11 @@ de orden 2 y 20 pasos, DDPM de 250 pasos, FID con clean-fid y CLIP Score L/14+B/
 - Referencias: COCO val2014, 10.000 IDs fijos, primera caption, seed 0,
   recorte central 256×256. Batch de generación 8. Ejecución final Apple Silicon MPS.
 
-Resultados: [informe](../../results/dit_s4_150k/INFORME.md),
-[CSV](../../results/dit_s4_150k/resultados.csv),
-[galería](../../results/dit_s4_150k/RESUMEN.html) y
-[análisis visual](../../results/dit_s4_150k/ANALISIS_VISUAL.md).
-`results/dit_s4_150k/datos/` contiene métricas, trazas comprimidas y manifest congelado;
+Resultados: [informe](../outputs/evaluation/dit_s4_150k/INFORME.md),
+[CSV](../outputs/evaluation/dit_s4_150k/resultados.csv),
+[galería](../outputs/evaluation/dit_s4_150k/RESUMEN.html) y
+[análisis visual](../outputs/evaluation/dit_s4_150k/ANALISIS_VISUAL.md).
+`outputs/runs/dit_s4_150k/datos/` contiene métricas, trazas comprimidas y manifest congelado;
 `figuras/` y `muestras/` contienen gráficas y ejemplos. Los PNG completos y pesos
 no se incluyen en Git. Las rutas absolutas de las trazas se conservan como procedencia.
 
@@ -34,11 +34,11 @@ Desde la raíz del repositorio, con Python 3.11:
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-python -m pip install -r base_code/requirements-eval.txt
-cd base_code
+python -m pip install -r requirements.txt
+export PYTHONPATH="$PWD/dit_base:$PWD/src"
 ```
 
-Todos los comandos siguientes se ejecutan desde `base_code/`, con el entorno activo.
+Todos los comandos siguientes se ejecutan desde la raíz, con el entorno activo y ese `PYTHONPATH`.
 En una máquina CUDA se necesita una instalación de PyTorch compatible con su GPU.
 Los dispositivos explícitos son `cpu`, `mps` o `cuda`; `auto` usa CUDA si está
 disponible y CPU en otro caso. CPU y GPU no garantizan igualdad bit a bit.
@@ -46,9 +46,9 @@ disponible y CPU en otro caso. CPU y GPU no garantizan igualdad bit a bit.
 ## Obtener e inspeccionar el checkpoint
 
 ```bash
-python -m eval.fetch_checkpoint --output ../checkpoints/david/last.pt
-python -m eval.inspect_checkpoint --ckpt ../checkpoints/david/last.pt \
-  --output results/checkpoint_inspection.json
+python -m eval.fetch_checkpoint --output checkpoints/david/last.pt
+python -m eval.inspect_checkpoint --ckpt checkpoints/david/last.pt \
+  --output outputs/runs/checkpoint_inspection.json
 ```
 
 La descarga verifica SHA-256:
@@ -63,8 +63,8 @@ por David no reemplaza ese buffer ni cambia retroactivamente los pesos.
 ## Generar ejemplos
 
 ```bash
-python sample_t2i.py --ckpt ../checkpoints/david/last.pt \
-  --prompts-file eval/prompts_david.txt --output results/ejemplos_dpm \
+python src/sample_t2i.py --ckpt checkpoints/david/last.pt \
+  --prompts-file src/eval/prompts_david.txt --output outputs/runs/ejemplos_dpm \
   --sampler dpm --steps 20 --cfg-scale 4 --seed 0 --batch-size 8 \
   --allow-zero-null --device cpu
 ```
@@ -76,17 +76,17 @@ Se guarda cada PNG, una vista previa y la correspondencia texto/imagen con metad
 ## Reproducir el protocolo completo
 
 ```bash
-python -m eval.fetch_coco --root ../coco --count 10000 --seed 0
+python -m eval.fetch_coco --root coco --count 10000 --seed 0
 python -m eval.prepare \
-  --captions ../coco/annotations/captions_val2014.json \
-  --images-dir ../coco/val2014 \
-  --output results/references_val2014_10k_seed0 \
+  --captions coco/annotations/captions_val2014.json \
+  --images-dir coco/val2014 \
+  --output outputs/runs/references_val2014_10k_seed0 \
   --count 10000 --seed 0 --preprocess center-crop
 
 OMP_NUM_THREADS=2 python -u -m eval.execute_plan \
-  --ckpt ../checkpoints/david/last.pt \
-  --manifest results/references_val2014_10k_seed0/manifest.json \
-  --output results/reproduccion_150k \
+  --ckpt checkpoints/david/last.pt \
+  --manifest outputs/runs/references_val2014_10k_seed0/manifest.json \
+  --output outputs/runs/reproduccion_150k \
   --generation-device mps --metric-device mps --clip-device mps \
   --batch-size 8 --metric-batch-size 32 --allow-zero-null
 ```
@@ -105,12 +105,12 @@ reetiqueta los resultados existentes.
 ## Evaluación individual y otros checkpoints
 
 ```bash
-python -m eval.run generate --ckpt ../checkpoints/david/last.pt \
-  --manifest results/references_val2014_10k_seed0/manifest.json \
-  --output results/otra_evaluacion_2k --count 2000 \
+python -m eval.run generate --ckpt checkpoints/david/last.pt \
+  --manifest outputs/runs/references_val2014_10k_seed0/manifest.json \
+  --output outputs/runs/otra_evaluacion_2k --count 2000 \
   --sampler dpm --steps 20 --cfg-scale 4 --seed 0 --batch-size 8 \
   --allow-zero-null --device cpu
-python -m eval.run metrics --run results/otra_evaluacion_2k/run.json --batch-size 32
+python -m eval.run metrics --run outputs/runs/otra_evaluacion_2k/run.json --batch-size 32
 ```
 
 El paso se lee del checkpoint. El pipeline puede usarse con otros pesos reales,
@@ -136,7 +136,7 @@ otra carpeta. Si solo faltan métricas, ejecuta `eval.run metrics` sin regenerar
 Con los originales completos, desde la raíz del repo:
 
 ```bash
-.venv/bin/python base_code/verify_evaluation.py \
+.venv/bin/python src/verify_evaluation.py \
   --folder /ruta/a/full_evaluation --output /ruta/a/verificacion.json
 ```
 
@@ -147,7 +147,7 @@ La verificación comprueba integridad y coherencia; no recalcula FID/CLIP.
 Desde la raíz del proyecto:
 
 ```bash
-OMP_NUM_THREADS=2 .venv/bin/python -m pytest base_code/tests -q
+OMP_NUM_THREADS=2 .venv/bin/python -m pytest tests -q
 .venv/bin/python -m pip check
 ```
 
@@ -159,7 +159,7 @@ parciales de Colab en la entrega de resultados.
 
 ## Análisis complementario sin generación nueva
 
-`../analyze_evaluation.py` calcula CLIP L/14 y B/32 de las reales y generadas,
+`src/analyze_evaluation.py` calcula CLIP L/14 y B/32 de las reales y generadas,
 selecciona grupos equilibrados según anotaciones de personas y calcula FID-N.
 Requiere los 10.000 PNG reales y los 10.000 PNG generados completos, con su
 `run.json`, manifest y `metrics.json`; los ejemplos del repositorio no bastan.
@@ -167,17 +167,17 @@ Requiere los 10.000 PNG reales y los 10.000 PNG generados completos, con su
 Si aún no se ha extraído el JSON de keypoints del ZIP oficial ya descargado:
 
 ```bash
-unzip -n ../coco/annotations_trainval2014.zip annotations/person_keypoints_val2014.json -d ../coco
+unzip -n coco/annotations_trainval2014.zip annotations/person_keypoints_val2014.json -d coco
 ```
 
-Desde `base_code/`, con el entorno de evaluación activo:
+Desde la raíz, con el entorno activo y `PYTHONPATH` definido:
 
 ```bash
-OMP_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2 VECLIB_MAXIMUM_THREADS=2 python analyze_evaluation.py \
-  --run results/reproduccion_150k/final_dpm_cfg_4/run.json \
-  --person-annotations ../coco/annotations/person_keypoints_val2014.json \
-  --output ../results/dit_s4_150k/analisis_complementario \
-  --cache results/cache_analisis_150k --device mps --batch-size 32 --seed 0
+OMP_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2 VECLIB_MAXIMUM_THREADS=2 python src/analyze_evaluation.py \
+  --run outputs/runs/reproduccion_150k/final_dpm_cfg_4/run.json \
+  --person-annotations coco/annotations/person_keypoints_val2014.json \
+  --output outputs/evaluation/dit_s4_150k/analisis_complementario \
+  --cache outputs/runs/cache_analisis_150k --device mps --batch-size 32 --seed 0
 ```
 
 El directorio de salida debe ser nuevo o corresponder exactamente a los mismos
@@ -187,7 +187,7 @@ métricas del run analizado; hay controles que reproducen esas métricas globale
 No se carga el DiT ni se generan imágenes. El script conserva scores por imagen,
 IDs, métricas y hashes, con bloques cacheados para continuar una interrupción.
 
-Los [resultados entregados](../../results/dit_s4_150k/analisis_complementario/INFORME.md)
+Los [resultados entregados](../outputs/evaluation/dit_s4_150k/analisis_complementario/INFORME.md)
 usan 4.750 IDs por grupo, seleccionados dentro del manifest original de 10K. La
 clasificación describe anotaciones de la foto original, no necesariamente personas
 visibles en el recorte ni captions que hablen de ellas. El análisis no cambia el

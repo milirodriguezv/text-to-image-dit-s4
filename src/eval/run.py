@@ -22,8 +22,9 @@ def code_fingerprint():
     """Detect code changes before resuming a partially generated run."""
     import hashlib
     root = Path(__file__).resolve().parents[1]
-    paths = [root / name for name in ("sample_t2i.py", "models.py", "download.py")]
-    paths += sorted((root / "diffusion").glob("*.py")) + sorted((root / "eval").glob("*.py"))
+    base = root.parent / "dit_base" if (root.parent / "dit_base").is_dir() else root
+    paths = [root / "sample_t2i.py", base / "models.py", base / "download.py"]
+    paths += sorted((base / "diffusion").glob("*.py")) + sorted((root / "eval").glob("*.py"))
     return hashlib.sha256("".join(sha256(p) for p in paths).encode()).hexdigest()
 
 

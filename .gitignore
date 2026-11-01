@@ -81,8 +81,9 @@ Thumbs.db
 coco/
 
 # Resultados completos y ejecuciones: locales.
-/results/*
-/base_code/results/
+/results/
+/src/results/
+/outputs/runs/
 
-# Resultados compactos del experimento que forman parte del proyecto.
-!/results/dit_s4_150k/
+# Grillas del entrenamiento que forman parte del proyecto.
+!/outputs/training/samples/

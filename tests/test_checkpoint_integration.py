@@ -97,7 +97,8 @@ def test_portable_colab_contains_current_code_and_valid_cells(tmp_path):
     assert bundle is not None
     assert hashlib.sha256(bundle).hexdigest() == notebook["metadata"]["source_bundle_sha256"]
     with zipfile.ZipFile(io.BytesIO(bundle)) as archive:
-        assert archive.read("sample_t2i.py") == (Path(__file__).parents[1] / "sample_t2i.py").read_bytes()
-        assert archive.read("eval/run.py") == (Path(__file__).parents[1] / "eval/run.py").read_bytes()
+        source = Path(build_notebook.__code__.co_filename).parents[1]
+        assert archive.read("sample_t2i.py") == (source / "sample_t2i.py").read_bytes()
+        assert archive.read("eval/run.py") == (source / "eval/run.py").read_bytes()
         assert not any(name.endswith((".pt", ".ipynb")) or "results/" in name for name in archive.namelist())
         assert b"transformers==4.57.6" in archive.read("requirements-eval.txt")

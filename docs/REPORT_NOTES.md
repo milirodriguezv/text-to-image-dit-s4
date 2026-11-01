@@ -95,7 +95,7 @@ committed code, the training README and David's checks on the server (31/10).
 | `extract_features.py` | Person filter and crop; resumable extraction with memmaps and progress files; also writes `image_ids.npy` | `linda` |
 | `createCSV.py` | Writes `captions.csv` (`image_id`, `caption`) | `linda` |
 | `dataset_t2i.py` | `CocoLatentDataset`; file name differs from the planned `datasets_t2i.py` | `linda` |
-| `train.py` (repo root) | `AutocastModelWrapper` (bf16 on the model forward only), `--max-steps`, `--resume`, `last.pt` every 10K, permanent checkpoint every 50K, DPM-Solver++ grids every 10K, `--use-amp`, `--cfg-dropout` | `david` |
+| `src/train.py` | `AutocastModelWrapper` (bf16 on the model forward only), `--max-steps`, `--resume`, `last.pt` every 10K, permanent checkpoint every 50K, DPM-Solver++ grids every 10K, `--use-amp`, `--cfg-dropout` | `david` |
 | `sample_t2i.py` | Text-prompt sampling: DPM-Solver++ 20 / DDPM 250, CFG; loads EMA and ∅ from the checkpoint; refuses a zero ∅ unless `--allow-zero-null` is passed | `Daniel` |
 | `eval/`, `verify_evaluation.py`, `report_evaluation.py` | Frozen reference manifest, generation, FID, CLIP Score, plots, integrity checks and report export | `Daniel` |
 
@@ -121,7 +121,7 @@ committed code, the training README and David's checks on the server (31/10).
 Results are in §6 and the reviews are in §7 (31/10 and 01/11).
 
 ### Conditions for reporting this run
-- **∅ consequences (zeros confirmed by David, 31/10; handled by the evaluation).** Root `train.py` never
+- **∅ consequences (zeros confirmed by David, 31/10; handled by the evaluation).** `train.py` never
   passes `null_path`, so `TextEmbedder` kept its default zeros. Sampling and evaluation of this run must
   take ∅ from the checkpoint (`y_embedder.null_embedding`, built with `null_path=None`) and must not load
   `null_empty_string.npy`, otherwise CFG would use a vector the model never saw as ∅. `sample_t2i.py`
@@ -382,7 +382,7 @@ No NaN was logged, and the largest grad norm is the first one (1.40 at step 100)
 steps/s and add up to 20.9 h. The falling loss shows that training progressed, not that the model converged.
 
 ### Evaluation results
-Source: `results/dit_s4_150k/` (delivered in commit `2074491`). Conditions: 10K val2014 references without
+Source: `outputs/evaluation/dit_s4_150k/` (delivered in commit `2074491`). Conditions: 10K val2014 references without
 a person filter, center crop, one seed, ∅ = zeros, clean-fid, torchmetrics, Apple Silicon MPS. Dani's control
 reproduced the FID-10K and both CLIP Scores of DPM s = 4 from the PNGs (§7). We did not rerun generation or
 FID, because the checkpoint and the full PNGs are not in git.
@@ -411,7 +411,7 @@ and their CLIP Scores are close. With one seed, the 0.76 FID gap between s = 3 a
 presented as a clear win.
 
 ### Complementary analyses (EMA 150K, DPM-Solver++ 20, s = 4)
-Source: `results/dit_s4_150k/analisis_complementario/` (delivered in commit `f7de252`). No new images
+Source: `outputs/evaluation/dit_s4_150k/analisis_complementario/` (delivered in commit `f7de252`). No new images
 were generated. Images keep the center crop and ∅ stays the checkpoint's zeros.
 
 **CLIP Score on the same 10,000 image-caption pairs**
@@ -459,7 +459,7 @@ most 0.07%, too low to explain the overall FID. The cause is unknown, and the id
 inspected.
 
 ### Qualitative observations
-Periodic grids (`samples/`) use EMA, DPM-Solver++ 20, s = 4, seed 0. In order, the prompts are:
+Periodic grids (`outputs/training/samples/`) use EMA, DPM-Solver++ 20, s = 4, seed 0. In order, the prompts are:
 "A dog sitting on a beach at sunset", "A red car parked in front of a building", "A woman riding a bicycle in a
 park", "A plate of food on a wooden table", "A cat sleeping on a couch", "A group of people playing baseball",
 "An airplane flying over mountains" and "A vase of flowers next to a window".
@@ -588,6 +588,21 @@ _(Date each entry. Include bugs found, anything that deviated from the plan, and
   - **Checked:** tests with Python 3.11 in a clean environment (50 passed, 1 skipped, CUDA) and `--help` of the
     main scripts. Training, generation and metrics were not re-run. The public Drive link was seen to serve
     `last.pt`, but the file was not downloaded, so its SHA-256 was not checked here.
+- **01/11 — Repository reorganized (requested by Milagros).** Paths in entries before this one are the old ones.
+  - **Layout:** `dit_base/` (paper code; `diffusion/` unchanged), `src/` (new code), `tests/`, `outputs/`, `docs/`.
+    This deviates from the rule in `CLAUDE.md` of keeping the original structure; the rule was updated.
+  - **Deleted (remain in git history):** the original README, `CODE_OF_CONDUCT.md`, `CONTRIBUTING.md`, `visuals/`,
+    `run_DiT.ipynb`, `environment.yml`, the class-conditional `train.py`, `sample.py` and `sample_ddp.py`, and the
+    unread `null_empty_string.npy`. `LICENSE.txt` is kept, as the original license requires.
+  - **Code edits, paths only:** `eval/run.py` (`code_fingerprint`), `eval/build_colab.py` and the tests. Model,
+    training, sampling and metrics behavior is unchanged.
+  - **Consequence for the code fingerprint:** new runs record a different `code_sha256` from the delivered runs,
+    so a partial generation from the old code cannot be continued with `--resume`. Delivered results stay valid
+    but were produced by the earlier layout (`main` at `e8bf78b`).
+  - **Results folder not edited:** `outputs/evaluation/dit_s4_150k/` keeps its old paths in `INFORME.md` and traces.
+  - **Audit of the README commands (real small COCO subset: 16 train, 32 val, 8 generated images):** features,
+    20 training steps, checkpoint download, generation and metrics ran without errors. The checkpoint SHA-256
+    matched. Not run: the `train2014.zip` download, full `execute_plan`, the analyses, anything at full scale.
 
 ---
 
@@ -637,11 +652,11 @@ Everything versioned is on `main`.
 
 | Material | Location |
 |---|---|
-| Sweep figures | `results/dit_s4_150k/figuras/cfg_metrics.png` and `fid_vs_clip.png` |
-| 8 evaluation examples (real, all s, DDPM) | `results/dit_s4_150k/muestras/` |
-| Training grids every 10K | `samples/` |
-| Training log | `log.txt` |
-| Numeric traces and per-image scores | `results/dit_s4_150k/datos/` and `analisis_complementario/` |
-| Code | `base_code/` and `train.py`; see `README.md` |
-| Checkpoint | `last.pt`, not in git; public Drive link in `README.md` and `base_code/eval/fetch_checkpoint.py` |
+| Sweep figures | `outputs/evaluation/dit_s4_150k/figuras/cfg_metrics.png` and `fid_vs_clip.png` |
+| 8 evaluation examples (real, all s, DDPM) | `outputs/evaluation/dit_s4_150k/muestras/` |
+| Training grids every 10K | `outputs/training/samples/` |
+| Training log | `outputs/training/log.txt` |
+| Numeric traces and per-image scores | `outputs/evaluation/dit_s4_150k/datos/` and `analisis_complementario/` |
+| Code | `dit_base/` (paper code) and `src/` (new code); see `README.md` |
+| Checkpoint | `last.pt`, not in git; public Drive link in `README.md` and `src/eval/fetch_checkpoint.py` |
 | Full 10K PNG sets | Not in git; held by Dani. Can be regenerated with `eval.execute_plan` |

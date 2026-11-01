@@ -449,11 +449,11 @@ Solo necesita a Personas 1 y 2 para la **integración final**.
 ## Entregables
 
 ```text
-train.py
-README_training.md
-log.txt
-samples/
-results/000-DiT-S-4/checkpoints/last.pt   (paso 150K, en Drive, no en git)
+src/train.py
+docs/README_training.md
+outputs/training/log.txt
+outputs/training/samples/
+last.pt   (paso 150K, en Drive, no en git)
 ```
 
 ---
@@ -673,7 +673,7 @@ Cuando llegue el checkpoint real, únicamente se cambia la ruta/configuración n
 sample_t2i.py
 eval/
 analyze_evaluation.py
-results/dit_s4_150k/            (incluye figuras/, muestras/ y analisis_complementario/)
+outputs/evaluation/dit_s4_150k/  (incluye figuras/, muestras/ y analisis_complementario/)
 ```
 
 ---

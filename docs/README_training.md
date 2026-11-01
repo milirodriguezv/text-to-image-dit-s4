@@ -4,17 +4,17 @@
 > según sus `args` y `log.txt`. El log registra **45.174 imágenes** y ejecución CPU
 > con AMP bf16. El batch 256 y la RTX 3090 mencionados abajo describen la
 > configuración prevista, no la ejecución registrada. El extractor de Linda
-> selecciona imágenes con personas; el informe en `results/dit_s4_150k/INFORME.md`
+> selecciona imágenes con personas; el informe en `outputs/evaluation/dit_s4_150k/INFORME.md`
 > explica la evaluación sobre val2014 sin ese filtro.
 
-Desde la raíz del repositorio, el script textual publicado por David es `train.py`.
-Importa las dependencias de `base_code/`; se puede comprobar su interfaz sin entrenar:
+Desde la raíz del repositorio, el script textual publicado por David es `src/train.py`.
+Importa las dependencias de `dit_base/` y `src/`; se puede comprobar su interfaz sin entrenar:
 
 ```bash
-OMP_NUM_THREADS=2 PYTHONPATH=base_code .venv/bin/python train.py --help
+OMP_NUM_THREADS=2 PYTHONPATH=dit_base:src .venv/bin/python src/train.py --help
 ```
 
-`base_code/train.py` es el script original condicionado por clases. El script de
+El script de
 David y su condición nula de ceros se conservan para documentar el entrenamiento
 recibido; no se ha relanzado ni corregido el entrenamiento al preparar la evaluación.
 

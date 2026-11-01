@@ -8,20 +8,34 @@ import zipfile
 from pathlib import Path
 
 
+def bundle_folders(root):
+    """Folders to bundle and their prefix; the notebook runs from one flat folder."""
+    repo = root.parent
+    if (repo / "dit_base").is_dir():
+        return [(repo / "dit_base", ""), (root, ""), (repo / "tests", "tests/")]
+    return [(root, "")]
+
+
 def build_notebook(destination=None):
     root = Path(__file__).resolve().parents[1]
     destination = Path(destination) if destination else root / "eval" / "colab_evaluation.ipynb"
     stream = io.BytesIO()
     with zipfile.ZipFile(stream, "w", compression=zipfile.ZIP_DEFLATED) as archive:
-        for path in sorted(root.rglob("*")):
-            relative = path.relative_to(root)
-            if any(part in {"results", "__pycache__", "visuals", "coco", "features", "samples"} for part in relative.parts):
-                continue
-            if not path.is_file() or path.suffix not in {".py", ".txt", ".md", ".json", ".yml"}:
-                continue
-            info = zipfile.ZipInfo(str(relative))
+        for folder, prefix in bundle_folders(root):
+            for path in sorted(folder.rglob("*")):
+                relative = path.relative_to(folder)
+                if any(part in {"results", "__pycache__", "visuals", "coco", "features", "samples"} for part in relative.parts):
+                    continue
+                if not path.is_file() or path.suffix not in {".py", ".txt", ".md", ".json", ".yml"}:
+                    continue
+                info = zipfile.ZipInfo(prefix + str(relative))
+                info.compress_type = zipfile.ZIP_DEFLATED
+                archive.writestr(info, path.read_bytes())
+        requirements = root.parent / "requirements.txt"
+        if requirements.is_file():
+            info = zipfile.ZipInfo("requirements-eval.txt")
             info.compress_type = zipfile.ZIP_DEFLATED
-            archive.writestr(info, path.read_bytes())
+            archive.writestr(info, requirements.read_bytes())
     bundle = stream.getvalue()
     encoded = base64.b64encode(bundle).decode()
     digest = hashlib.sha256(bundle).hexdigest()

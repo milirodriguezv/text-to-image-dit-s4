@@ -7,8 +7,7 @@ changes the output, forward_with_cfg (4 guided ε channels, unguided Σ), compat
 diffusion/ (training_losses, p_sample_loop), bf16 autocast and gradient flow to TextEmbedder.
 
 CPU only, synthetic inputs (no CLIP, no data, no network). Run:
-    cd base_code && ../.venv/bin/python -m pytest tests -q
-    # or, from the repo root:  .venv/bin/python -m pytest base_code/tests -q
+    .venv/bin/python -m pytest tests -q   (from the repo root)
 """
 import copy
 
