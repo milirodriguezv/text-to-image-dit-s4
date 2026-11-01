@@ -382,7 +382,7 @@ No NaN was logged, and the largest grad norm is the first one (1.40 at step 100)
 steps/s and add up to 20.9 h. The falling loss shows that training progressed, not that the model converged.
 
 ### Evaluation results
-Source: `results/dit_s4_150k/` on branch `Daniel` (commit `2074491`). Conditions: 10K val2014 references without
+Source: `results/dit_s4_150k/` (delivered in commit `2074491`). Conditions: 10K val2014 references without
 a person filter, center crop, one seed, ∅ = zeros, clean-fid, torchmetrics, Apple Silicon MPS. Dani's control
 reproduced the FID-10K and both CLIP Scores of DPM s = 4 from the PNGs (§7). We did not rerun generation or
 FID, because the checkpoint and the full PNGs are not in git.
@@ -411,7 +411,7 @@ and their CLIP Scores are close. With one seed, the 0.76 FID gap between s = 3 a
 presented as a clear win.
 
 ### Complementary analyses (EMA 150K, DPM-Solver++ 20, s = 4)
-Source: `results/dit_s4_150k/analisis_complementario/` on branch `Daniel` (commit `f7de252`). No new images
+Source: `results/dit_s4_150k/analisis_complementario/` (delivered in commit `f7de252`). No new images
 were generated. Images keep the center crop and ∅ stays the checkpoint's zeros.
 
 **CLIP Score on the same 10,000 image-caption pairs**
@@ -459,7 +459,7 @@ most 0.07%, too low to explain the overall FID. The cause is unknown, and the id
 inspected.
 
 ### Qualitative observations
-Periodic grids (`samples/` on branch `david`) use EMA, DPM-Solver++ 20, s = 4, seed 0. In order, the prompts are:
+Periodic grids (`samples/`) use EMA, DPM-Solver++ 20, s = 4, seed 0. In order, the prompts are:
 "A dog sitting on a beach at sunset", "A red car parked in front of a building", "A woman riding a bicycle in a
 park", "A plate of food on a wooden table", "A cat sleeping on a couch", "A group of people playing baseball",
 "An airplane flying over mountains" and "A vase of flowers next to a window".
@@ -577,6 +577,17 @@ _(Date each entry. Include bugs found, anything that deviated from the plan, and
   - **Uncertainty:** the CLIP intervals in §6 are ours, computed from Dani's per-image scores.
 - **01/11 — Sources for the final report.** The team will write it from this file and
   `reparto_trabajo_DiT_detallado.md` only. Dani's `INFORME.md` is not a source, so its wording is not corrected.
+- **01/11 — Branches integrated into `main`.** This supersedes the earlier note that `main` lacks the implementation.
+  - **Method:** `david`, `linda` and `mili` merged on top of `Daniel`, keeping each branch's history. No code file
+    changed in the merges, and `diffusion/` is untouched.
+  - **Conflicts:** `REPORT_NOTES.md` keeps `mili`'s version; `README_training.md` and `.gitignore` keep `Daniel`'s.
+  - **Removed from the tree:** `base_code/prueba.py` and `preprocessing_test.png`. Both remain in git history.
+  - **`README.md` rewritten:** it now points to the two sources of truth and documents reproduction end to end.
+  - **Known problems left unfixed**, so the code remains the one that produced this run: ∅ in zeros, the EMA
+    overwrite on resume (`train.py:244`) and the incorrect comment at `dataset_t2i.py:82`.
+  - **Checked:** tests with Python 3.11 in a clean environment (50 passed, 1 skipped, CUDA) and `--help` of the
+    main scripts. Training, generation and metrics were not re-run. The public Drive link was seen to serve
+    `last.pt`, but the file was not downloaded, so its SHA-256 was not checked here.
 
 ---
 
@@ -622,13 +633,15 @@ _(Date each entry. Include bugs found, anything that deviated from the plan, and
 - Esser et al. (2024), *Scaling Rectified Flow Transformers* (SD3, pooled-text MLP precedent), arXiv:2403.03206.
 
 ## 10. Where the report's material lives
+Everything versioned is on `main`.
+
 | Material | Location |
 |---|---|
-| Sweep figures | `results/dit_s4_150k/figuras/cfg_metrics.png` and `fid_vs_clip.png`, branch `Daniel` |
-| 8 evaluation examples (real, all s, DDPM) | `results/dit_s4_150k/muestras/`, branch `Daniel` |
-| Training grids every 10K | `samples/`, branch `david` |
-| Training log | `log.txt`, branches `david` and `Daniel` |
-| Numeric traces and per-image scores | `results/dit_s4_150k/datos/` and `analisis_complementario/`, branch `Daniel` |
-| Code | `models.py` and tests: `mili`. Features and dataset: `linda`. `train.py`: `david`. Sampling and evaluation: `Daniel` |
-| Checkpoint | `last.pt`, not in git; held by David and Dani |
-| Full 10K PNG sets | Not in git; held by Dani |
+| Sweep figures | `results/dit_s4_150k/figuras/cfg_metrics.png` and `fid_vs_clip.png` |
+| 8 evaluation examples (real, all s, DDPM) | `results/dit_s4_150k/muestras/` |
+| Training grids every 10K | `samples/` |
+| Training log | `log.txt` |
+| Numeric traces and per-image scores | `results/dit_s4_150k/datos/` and `analisis_complementario/` |
+| Code | `base_code/` and `train.py`; see `README.md` |
+| Checkpoint | `last.pt`, not in git; public Drive link in `README.md` and `base_code/eval/fetch_checkpoint.py` |
+| Full 10K PNG sets | Not in git; held by Dani. Can be regenerated with `eval.execute_plan` |

@@ -29,7 +29,7 @@ Este archivo y `REPORT_NOTES.md` son las fuentes de verdad del informe final. Si
 | **1 — Linda** | Features de entrenamiento + Dataset | ✅ Terminado. La evaluación de Dani no necesitó features de validación precalculados |
 | **2 — Milagros** | `models.py` + tests | ✅ Terminado |
 | **3 — David** | `train.py` + entrenamiento | ✅ Terminado: 150K pasos |
-| **4 — Dani** | Sampling + evaluación | ✅ Entregado en la rama `Daniel` (commits `2074491` y `f7de252`): evaluación de 150K y análisis complementarios |
+| **4 — Dani** | Sampling + evaluación | ✅ Entregado (commits `2074491` y `f7de252`): evaluación de 150K y análisis complementarios |
 
 ## Qué cambió respecto al plan original
 
@@ -452,7 +452,7 @@ Solo necesita a Personas 1 y 2 para la **integración final**.
 train.py
 README_training.md
 log.txt
-samples/                                  (rama david)
+samples/
 results/000-DiT-S-4/checkpoints/last.pt   (paso 150K, en Drive, no en git)
 ```
 
@@ -474,7 +474,7 @@ checkpoint + prompt
 
 **Importante:** tampoco debe esperar al entrenamiento real para empezar.
 
-## Implementado (rama `Daniel`, commits `2074491` y `f7de252`)
+## Implementado (commits `2074491` y `f7de252`)
 
 **Entregado:** `sample_t2i.py`, `eval/`, `verify_evaluation.py`, `report_evaluation.py`, `analyze_evaluation.py`, tests y `results/dit_s4_150k/`. Se usó el checkpoint EMA de 150K, ∅ en ceros tomado del checkpoint y 10K imágenes de `val2014` sin filtrar por personas, con center crop.
 
@@ -750,7 +750,7 @@ Persona 3 ──► Checkpoint
          Sampling + Evaluation
 ```
 
-✅ Evaluación de 150K y análisis complementarios entregados en la rama `Daniel`. Las ramas siguen sin integrarse en `main`; `REPORT_NOTES.md` (§10) indica dónde está cada material.
+✅ Evaluación de 150K y análisis complementarios entregados. Las ramas están integradas en `main`; `REPORT_NOTES.md` (§10) indica dónde está cada material.
 
 ---
 
