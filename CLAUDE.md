@@ -107,7 +107,7 @@ Checkpoint: `last.pt`, EMA at step 150,000, SHA-256 `f693fd73…`; `eval.fetch_c
 | `tests/` | New | Tests |
 | `notebooks/` | New | Tutorial notebook required by the course brief, stored with outputs |
 | `outputs/` | Results | `training/` (log, grids), `evaluation/dit_s4_150k/`; new runs in `outputs/runs/`, not versioned |
-| `docs/` | Docs | `REPORT_NOTES.md`, work split, training and evaluation guides |
+| `docs/` | Docs | `REPORT_NOTES.md`, work split, evaluation guide |
 
 Run from the repo root with `export PYTHONPATH="$PWD/dit_base:$PWD/src"`. Exact commands are in `README.md`.
 

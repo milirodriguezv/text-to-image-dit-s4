@@ -606,6 +606,8 @@ _(Date each entry. Include bugs found, anything that deviated from the plan, and
 - **01/11 — Tutorial notebook added, as the course brief requires.** `notebooks/text_to_image_tutorial.ipynb`,
   executed from start to end with the real checkpoint on MPS and stored with its outputs. It adds no results: its
   100-step training demonstration on 8 images is not an experiment, and its tables read the stored evaluation.
+- **01/11 — `README_training.md` and `plan_persona2.md` deleted.** Both remain in git history; neither was a source
+  for the report.
 
 ---
 
