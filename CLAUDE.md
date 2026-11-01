@@ -19,7 +19,8 @@ adaLN-Zero · DiT-S/4 · p=4 · d=384 · T=64 tokens · s = CFG scale.
 
 ## Original specification
 These are the planned values. The final run deviates from them; see "Final run" below and
-`docs/REPORT_NOTES.md` §2.1, which prevails.
+the "Final run" section, which prevails. The detailed report notes were removed from the tree; they remain
+in git history at commit `edaed2f` (`docs/REPORT_NOTES.md`, `docs/eval_README.md`).
 
 | Item | Value |
 |---|---|
@@ -107,7 +108,6 @@ Checkpoint: `last.pt`, EMA at step 150,000, SHA-256 `f693fd73…`; `eval.fetch_c
 | `tests/` | New | Tests |
 | `notebooks/` | New | Tutorial notebook required by the course brief, stored with outputs |
 | `outputs/` | Results | `training/` (log, grids), `evaluation/dit_s4_150k/`; new runs in `outputs/runs/`, not versioned |
-| `docs/` | Docs | `REPORT_NOTES.md`, work split, evaluation guide |
 
 Run from the repo root with `export PYTHONPATH="$PWD/dit_base:$PWD/src"`. Exact commands are in `README.md`.
 
@@ -142,6 +142,6 @@ Run from the repo root with `export PYTHONPATH="$PWD/dit_base:$PWD/src"`. Exact 
 ## Rules for Claude when working in this repo
 - Do not edit `diffusion/`. Keep paper code in `dit_base/` and new code in `src/`.
 - Keep the adaLN-Zero zero-initialization intact.
-- Any new deviation from the specification must be flagged and recorded in `docs/REPORT_NOTES.md`.
+- Any new deviation from the specification must be flagged and recorded in "Final run" above.
 - When a hyperparameter isn't specified here, say so instead of assuming.
-- Update `docs/REPORT_NOTES.md` (changes log + results tables) whenever code behavior or results change.
+- Update this file and `README.md` whenever code behavior or results change.
