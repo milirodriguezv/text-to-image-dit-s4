@@ -450,7 +450,6 @@ Solo necesita a Personas 1 y 2 para la **integración final**.
 
 ```text
 src/train.py
-docs/README_training.md
 outputs/training/log.txt
 outputs/training/samples/
 last.pt   (paso 150K, en Drive, no en git)
