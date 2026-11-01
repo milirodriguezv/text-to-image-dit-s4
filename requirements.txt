@@ -1,4 +1,3 @@
-# Persona 4 environment verified on Python 3.11 / CPU. Install in a virtualenv.
 # On the training GPU, use the matching CUDA builds of torch/torchvision.
 torch==2.14.1
 torchvision==0.29.1
