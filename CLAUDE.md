@@ -31,7 +31,7 @@ in git history at commit `edaed2f` (`docs/REPORT_NOTES.md`, `docs/eval_README.md
 | Text projection | `TextEmbedder`: Linear(768→384) → SiLU → Linear(384→384) |
 | ∅ | Frozen CLIP embedding of `""` (register_buffer, not trained) |
 | Text dropout (CFG) | 15% |
-| Loss | Hybrid (repo default): MSE on ε_θ + vb (VLB) on Σ_θ, i.e. L_simple + 0.001·L_vlb |
+| Loss | Hybrid (repo default): MSE on ε_θ + vb (VLB, bits per dim) on Σ_θ; the code adds `mse + vb` with no 0.001 factor |
 | Optimizer | AdamW, lr 1e-4, weight_decay 0, global batch 256, no warmup |
 | EMA | decay 0.9999, used for all sampling/evaluation |
 | Training length | 400K steps (confirm with measured it/s; ~33–37 h estimated on RTX 3090) |
@@ -48,7 +48,7 @@ in git history at commit `edaed2f` (`docs/REPORT_NOTES.md`, `docs/eval_README.md
 | Item | Specification | Final run |
 |---|---|---|
 | Training images | train2014, 82,783 | 45,174 images with a person box and 5 captions |
-| Crop | Center crop | Square crop around the person boxes + 20% margin, resized to 256 |
+| Crop | Center crop | Person boxes + 20% margin, made square, clipped to the image (non-square at borders), resized to 256 |
 | Global batch | 256 | 128 |
 | Training length | 400K steps | 150K steps |
 | Hardware | RTX 3090 | CPU with AVX-512 BF16, ~21 h |
@@ -90,8 +90,8 @@ Checkpoint: `last.pt`, EMA at step 150,000, SHA-256 `f693fd73…`; `eval.fetch_c
     EMA-updated. That is fine because ∅ is constant.
 - **`download.find_model(path)`** returns `checkpoint["ema"]` when that key exists. Reuse it in
   `sample_t2i.py` and `eval/`.
-  - On PyTorch ≥2.6, `torch.load` defaults to `weights_only=True` and fails on our checkpoints, which contain
-    an argparse `Namespace` under `"args"`. Pass `weights_only=False`.
+  - `src/train.py` stores `vars(args)` under `"args"`. `find_model` passes `weights_only=False` and also accepts an
+    argparse `Namespace`, which `torch.load` rejects by default on PyTorch ≥2.6. Only load trusted files.
 - `models.py` imports `PatchEmbed`, `Attention` and `Mlp` from `timm.models.vision_transformer`.
 
 ## Repository map
@@ -108,6 +108,7 @@ Checkpoint: `last.pt`, EMA at step 150,000, SHA-256 `f693fd73…`; `eval.fetch_c
 | `tests/` | New | Tests |
 | `notebooks/` | New | Tutorial notebook required by the course brief, stored with outputs |
 | `outputs/` | Results | `training/` (log, grids), `evaluation/dit_s4_150k/`; new runs in `outputs/runs/`, not versioned |
+| `text_conditioned_dit_report/` | Report | `main.tex`, `references.bib`, style file and copies of the report figures; compile from this folder |
 
 Run from the repo root with `export PYTHONPATH="$PWD/dit_base:$PWD/src"`. Exact commands are in `README.md`.
 
@@ -136,7 +137,6 @@ Run from the repo root with `export PYTHONPATH="$PWD/dit_base:$PWD/src"`. Exact 
 ## Known problems, left unfixed to preserve this run
 - ∅ in zeros (see "Final run"). Fix `train.py` before a run that should follow the specification.
 - `update_ema(ema, model, decay=0)` (`src/train.py:244`) overwrites the EMA on resume. Fix before using `--resume`.
-- The comment at `src/dataset_t2i.py:82` is wrong: features are unscaled.
 - `code_sha256` differs from the delivered runs since the 01/11 reorganization.
 
 ## Rules for Claude when working in this repo
@@ -144,4 +144,4 @@ Run from the repo root with `export PYTHONPATH="$PWD/dit_base:$PWD/src"`. Exact 
 - Keep the adaLN-Zero zero-initialization intact.
 - Any new deviation from the specification must be flagged and recorded in "Final run" above.
 - When a hyperparameter isn't specified here, say so instead of assuming.
-- Update this file and `README.md` whenever code behavior or results change.
+- Update this file, `README.md` and the report (`text_conditioned_dit_report/main.tex`) whenever code behavior or results change.

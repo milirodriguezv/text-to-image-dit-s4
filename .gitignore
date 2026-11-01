@@ -87,3 +87,4 @@ coco/
 
 # Grillas del entrenamiento que forman parte del proyecto.
 !/outputs/training/samples/
+!/text_conditioned_dit_report/outputs/training/samples/

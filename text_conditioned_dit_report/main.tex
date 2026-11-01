@@ -1,5 +1,5 @@
 % Text-conditioned DiT-S/4 on MS-COCO -- final report (NeurIPS format, nips15submit_e.sty)
-% Place this file and references.bib at the repository root so that the figure paths resolve.
+% Compile from this folder: references.bib and the figures in outputs/ are stored next to this file.
 \documentclass{article}
 \usepackage{nips15submit_e,times}
 \nipsfinalcopy
@@ -44,8 +44,8 @@ Universidad Aut\'onoma de Madrid \\
 Diffusion Transformers (DiT) replace the convolutional U-Net of latent diffusion models with a Vision Transformer, but the original DiT is conditioned only on ImageNet class labels.
 We adapt the smallest configuration, DiT-S/4, to text-conditioned generation on MS-COCO Captions.
 Captions are encoded by a frozen CLIP ViT-L/14 text encoder, and the pooled vector $\epooled$ is projected by a small MLP and added to the timestep embedding, so that every block regresses its adaLN-Zero modulation with a global channel-wise shift and scale.
-The final run trained on 45,174 COCO train2014 images containing people, with a person-centered crop, batch 256 and 150,000 steps on CPU, with an all-zero null embedding $\nullemb$.
-On 10K unfiltered val2014 images with a center crop, classifier-free guidance improves both metrics up to $s=4$ (FID-10K 71.2168, CLIP Score ViT-L/14 18.2717 with DPM-Solver++ 20 steps), while CLIP Score and FID continue to reflect the same trade-off across the guidance sweep.
+The final run trained on 45,174 COCO train2014 images containing people, with a person-centered crop, batch 128 and 150,000 steps on CPU, with an all-zero null embedding $\nullemb$.
+On 10K unfiltered val2014 images with a center crop, classifier-free guidance improves both metrics up to $s=4$ (FID-10K 71.2168, CLIP Score ViT-L/14 18.2717 with DPM-Solver++ 20 steps), and at $s=5$ CLIP Score still rises while FID-10K worsens.
 Image quality remains limited: scenes and colors relate to the caption, but objects and people are deformed.
 Results are better on validation images with person annotations than without; we describe this difference but do not establish its cause.
 \end{abstract}
@@ -114,7 +114,7 @@ The dataset memory-maps these arrays and, for each item, draws a flip and one of
 
 \subsection{DiT-S/4 with adaLN-Zero-Text}
 
-DiT-S/4 has 12 blocks, width $d=384$, 6 attention heads and patch size $p=4$, giving $T=64$ tokens from a $32\times32$ latent.
+DiT-S/4 has 12 blocks, width $d=384$, 6 attention heads and patch size $p=4$, giving 64 tokens from a $32\times32$ latent.
 The model has \texttt{learn\_sigma=True} and outputs 8 channels: $\epsilon_\theta$ (4) and $\Sigma_\theta$ (4); the total parameter count is 33,003,776.
 We replace DiT's class-label lookup table with a \emph{text embedder}, a two-layer MLP (Linear $768\to384$, SiLU, Linear $384\to384$) with the same structure as the timestep embedder:
 \begin{equation}
@@ -134,9 +134,10 @@ All other DiT components (patch embedding, 2D sine-cosine positional embedding, 
 The forward process uses $T=1000$ steps with a linear schedule $\beta_t$ from $10^{-4}$ to 0.02, and $z_t=\sqrt{\bar\alpha_t}\,z_0+\sqrt{1-\bar\alpha_t}\,\epsilon$.
 We use the hybrid loss of DiT~\cite{nichol2021improved,peebles2023dit},
 \begin{equation}
-  L=L_{\mathrm{simple}}+0.001\,L_{\mathrm{vlb}},\qquad L_{\mathrm{simple}}=\mathbb{E}\,\big\|\epsilon-\epsilon_\theta(z_t,t,c)\big\|^2,
+  L=L_{\mathrm{simple}}+L_{\mathrm{vlb}},\qquad L_{\mathrm{simple}}=\mathbb{E}\,\big\|\epsilon-\epsilon_\theta(z_t,t,c)\big\|^2,
 \end{equation}
 where the MSE term trains $\epsilon_\theta$ and the variational term trains $\Sigma_\theta$ (with a stop-gradient on the mean).
+As implemented in the DiT code, the two terms are added directly, with no additional weight on $L_{\mathrm{vlb}}$, which is measured in bits per dimension.
 Weights are averaged with an exponential moving average (EMA) of decay 0.9999, and the EMA weights are used for all sampling and evaluation.
 
 For classifier-free guidance~\cite{ho2022cfg}, 15\% of training captions are replaced by a null embedding $\nullemb$ (measured rate 0.1501 over 100,000 draws).
@@ -153,9 +154,9 @@ DPM-Solver++ is deterministic and ignores $\Sigma_\theta$.
 The specification planned 82,783 train2014 images with a center crop, batch 256 and 400K steps on a GPU, with $\nullemb$ set to the frozen CLIP embedding of the empty caption.
 The single completed run deviates from it as summarized in Table~\ref{tab:deviations}.
 It trained on the 45,174 train2014 images that have at least one person box and five captions.
-Each image was cropped to a square around the union of person boxes with a 20\% margin, clipped to the image and resized (bicubic) to 256.
-Training used AdamW (learning rate $10^{-4}$, weight decay 0, no warmup, no gradient clipping), global batch 256 and 150,000 steps ($\approx$425 epochs), with bf16 autocast on the model forward only.
-Because the training script did not pass the null-embedding file, $\nullemb$ remained all zeros; sampling and evaluation take $\nullemb$ from the checkpoint, so training, sampling and evaluation use the same all-zero null vector.
+Each crop starts from the union of person boxes with a 20\% margin, is expanded to a square, clipped to the image and resized (bicubic) to 256, so crops clipped at an image border are not square and their aspect ratio changes.
+Training used AdamW (learning rate $10^{-4}$, weight decay 0, no warmup, no gradient clipping), global batch 128 and 150,000 steps ($\approx$425 epochs), with bf16 autocast on the model forward only.
+$\nullemb$ remained all zeros; sampling and evaluation take $\nullemb$ from the checkpoint, so training, sampling and evaluation use the same all-zero null vector.
 Every 10K steps the script saved a checkpoint and a grid of 8 fixed prompts (EMA, DPM-Solver++ 20 steps, $s=4$, seed 0).
 The full configuration is listed in Appendix~\ref{app:config}.
 COCO train2014 is used for training and val2014 for evaluation, so evaluation images are unseen.
@@ -171,7 +172,7 @@ COCO train2014 is used for training and val2014 for evaluation, so evaluation im
     \midrule
     Training images & COCO train2014, 82,783 & 45,174 with $\geq$1 person box and 5 captions \\
     Crop & Center crop of the full image & Square around person boxes $+$20\% margin \\
-    Global batch & 256 & 256 \\
+    Global batch & 256 & 128 \\
     Training length & 400K steps & 150K steps \\
     Seen samples & $\approx$1,237 epochs (102.4M) & $\approx$425 epochs (19.2M, 18.8\% of plan) \\
     Hardware & RTX 3090 & CPU (AVX-512 BF16), $\approx$2.0 steps/s, $\approx$21 h \\
@@ -184,17 +185,29 @@ COCO train2014 is used for training and val2014 for evaluation, so evaluation im
 
 \subsection{Evaluation protocol}
 
-The reference set contains 10K val2014 images: image IDs are sorted, shuffled with seed 0 and the first 10K kept, without any filter on people, and each image is paired with its first caption.
-References and generated images use a 256 center crop, which differs from the person crop used in training.
-For each caption we generate one image with the EMA checkpoint at step 150K, using one seed (the seed of each generation batch is the index of its first image).
-We evaluate DPM-Solver++ 20 steps at $s\in\{1,1.5,2,3,4,5\}$ and DDPM 250 steps at $s=4$, the scale with the lowest FID in the sweep.
-FID-10K is computed with clean-fid~\cite{parmar2022cleanfid}; FID values with different sample sizes are not comparable, and none of our values are comparable with those of the DiT paper.
-CLIP Score~\cite{hessel2021clipscore} is $\max(\mathrm{mean}(100\cos(\mathrm{image},\mathrm{text})),0)$ via torchmetrics, with CLIP ViT-L/14 (primary, the same model family as the text encoder) and ViT-B/32 as a secondary sanity check.
-Two complementary analyses reuse the generated images at DPM-Solver++ 20, $s=4$: the CLIP Score of the real references with the same captions, and metrics for two balanced groups of validation images by person annotation status.
-Generation was run on Apple Silicon (MPS) with batch 8.
+\paragraph{Test set.}
+We evaluate on 10K val2014 images.
+We sort the image IDs, shuffle them with seed 0 and keep the first 10K, without filtering for people.
+Each image is paired with its first caption.
+Real and generated images use a 256 center crop.
 
-The repository also includes a tutorial notebook (\url{notebooks/text_to_image_tutorial.ipynb}) that illustrates the implemented functionality step by step.
+\paragraph{Generation.}
+We use the EMA checkpoint at step 150K to generate one image per caption, using one seed (each batch of 8 uses the index of its first image as its seed).
+Generation ran on Apple Silicon (MPS).
+We test DPM-Solver++ with 20 steps at $s\in\{1,1.5,2,3,4,5\}$, and DDPM with 250 steps at $s=4$, the scale with the lowest FID in the sweep.
 
+\paragraph{Metrics.}
+We compute FID-10K with clean-fid~\cite{parmar2022cleanfid}.
+FID values from different sample sizes cannot be compared, and none of our values can be compared with those of the DiT paper.
+We compute CLIP Score~\cite{hessel2021clipscore} with torchmetrics as $\max(\mathrm{mean}(100\cos(\mathrm{image},\mathrm{text})),0)$.
+Our main metric uses CLIP ViT-L/14, the same model family as the text encoder, and ViT-B/32 serves as a secondary check.
+
+\paragraph{Additional analyses.}
+Two further analyses reuse the images generated with DPM-Solver++ 20 at $s=4$, so no new images are generated.
+The first computes the CLIP Score of the real images with the same captions.
+The second compares metrics between two equal-sized groups of validation images, with and without person annotations.
+
+The repository also includes a tutorial notebook (\path{notebooks/text_to_image_tutorial.ipynb}) that shows the implemented functionality step by step.
 % ---------------------------------------------------------------------------
 \section{Results and discussion}
 
@@ -248,7 +261,7 @@ The real-image score is a practical reference, not a strict maximum: at this set
 \paragraph{Images with and without people.}
 Of the 10K references, 5,250 have person annotations and 4,750 do not; the second group is used whole and the first is subsampled to 4,750 (Table~\ref{tab:groups}).
 Real images obtain similar CLIP Scores in both groups, whereas generated images score higher and have a lower FID-4750 in the group with people.
-A bootstrap over images (5,000 resamples, 95\% intervals), computed from the per-image scores, gives a generated-image difference (with minus without people) of 3.15 [3.02, 3.29] for L/14 and 3.65 [3.49, 3.81] for B/32.
+A bootstrap over images (5,000 resamples, 95\% intervals), computed from the per-image scores, gives a generated-image difference (with minus without people) of 3.15 [3.02, 3.29] for L/14 and 3.65 [3.52, 3.79] for B/32.
 These intervals cover only the choice of images for this one generated sample, not a new seed or a retrained model, and no interval exists for FID-4750.
 The groups differ in content, captions and composition as well as in the presence of people, so this breakdown describes the gap but does not identify its cause.
 The group means of CLIP Score and the group selection were recomputed from the stored per-image scores and match; FID-4750 and the per-image scores themselves were not recomputed in our review.
@@ -285,13 +298,13 @@ Across the 50K, 100K and 150K grids, compositions stay similar and details chang
 \begin{figure}[t]
   \centering
   \includegraphics[width=0.85\textwidth]{outputs/training/samples/0150000.png}
-  \caption{Training grid at step 150K (EMA, DPM-Solver++ 20 steps, $s=4$, seed 0). Top row: ``A dog sitting on a beach at sunset'', ``A red car parked in front of a building'', ``A woman riding a bicycle in a park'', ``A food plate on a table'', ``A man walking his dog at the beach'', ``A bicycle on a road'', ``A dog lying on a blanket'', and ``A cat sitting on a couch''; bottom row: ``A red bus in the city'', ``A person on a beach'', ``A bird in a tree'', ``A sunglasses case'', ``A woman in a yellow dress'', ``A motorcycle racing'', ``A white dog'', and ``A small boat on a lake''.}
+  \caption{Training grid at step 150K (EMA, DPM-Solver++ 20 steps, $s=4$, seed 0). Top row: ``A dog sitting on a beach at sunset'', ``A red car parked in front of a building'', ``A woman riding a bicycle in a park'' and ``A plate of food on a wooden table''; bottom row: ``A cat sleeping on a couch'', ``A group of people playing baseball'', ``An airplane flying over mountains'' and ``A vase of flowers next to a window''.}
   \label{fig:grid}
 \end{figure}
 
 Figure~\ref{fig:examples} shows evaluation examples.
 These are the first entries of the frozen evaluation manifest and were not selected for quality.
-Across the eight stored examples, a man walking into the ocean gives a recognizable beach with a deformed figure and object; a bird among purple flowers gives colored regions without an identifiable bird; and a dog standing in a field yields a scene with scrambled anatomy and a low-salience object.
+Across the eight stored examples, a man walking into the ocean gives a recognizable beach with a deformed figure and object; a bird among purple flowers gives colored regions without an identifiable bird; and a man and two women walking their dogs in the woods gives a wooded scene with deformed figures and no recognizable dogs.
 The samples thus match categories and scenes in part, but fail on anatomy, object count and complex actions, and some high-$s$ images look blocky and oversaturated.
 These are examples, not a global measure, and they do not show that one sampler looks better than the other.
 
@@ -309,18 +322,18 @@ These are examples, not a global measure, and they do not show that one sampler 
     \includegraphics[width=0.22\textwidth]{outputs/evaluation/dit_s4_150k/muestras/000000057703/final_dpm_cfg_4.png} \\
     (a) & (b) & (c) & (d)
   \end{tabular}
-  \caption{Real val2014 references (top, center crop) and generated images (bottom, DPM-Solver++ 20, $s=4$) for the first four entries of the evaluation manifest, not selected for quality. Captions are abbreviated in the image names but correspond to the first four COCO validation prompts from the frozen manifest.}
+  \caption{Real val2014 references (top, center crop) and generated images (bottom, DPM-Solver++ 20, $s=4$) for the first four entries of the evaluation manifest, not selected for quality. Captions: (a) ``A white plate with sausage, eggs and other meat.'', (b) ``A man walking into the ocean while holding a surfboard.'', (c) ``A bird sitting in a field of beautiful purple flowers.'', (d) ``A man and two women walking their dogs and hiking in the woods.''}
   \label{fig:examples}
 \end{figure}
 
 \subsection{Limitations}
 
 \begin{itemize}
-    \item \textbf{Reduced training data.} Only about 45K of the roughly 83K images in the training set could be used, these are the ones that include people in it. The model therefore saw a little over half of the planned training set.
+    \item \textbf{Reduced training data.} The run used only the 45,174 images with person annotations and five captions, out of the 82,783 planned, so the model saw a little over half (54.6\%) of the planned training images.
   \item \textbf{No hyperparameter search.} The computational cost of training ruled out a hyperparameter study. The hyperparameters were taken from the DiT paper, with a few adjusted to our setting, so the final run is not a tuned configuration.
   \item \textbf{One seed, one checkpoint.} All metrics come from one seed and the 150K checkpoint; FID-2K exists only at 150K, so there is no convergence curve and no claim about convergence can be made.
   \item \textbf{Null embedding.} $\nullemb$ is all zeros, not CLIP(\texttt{""}) as specified. The MLP maps it to a constant $\yemb$ that the model learns as ``no caption'', similar to DiT's learned null embedding.
-  \item \textbf{Feature provenance.} The training features were produced by the final version of the extraction script, which stores unscaled statistics so that 0.18215 is applied once, and this was reported in the internal review;
+  \item \textbf{Feature provenance.} The team member who ran the training reported that the features came from the final version of the extraction script, which stores unscaled statistics so that 0.18215 is applied once. This was not independently verified.
 \end{itemize}
 
 % ---------------------------------------------------------------------------
@@ -368,9 +381,9 @@ Larger DiT configurations and smaller patches, which improve FID in the original
     $\nullemb$ & All-zero vector $(1,768)$, stored as a buffer in the checkpoint \\
     Data & 45,174 train2014 images with people; person crop at 256; original $+$ flip; 5 captions \\
     Optimizer & AdamW, lr $10^{-4}$, weight decay 0, no warmup, no gradient clipping \\
-    Batch / length & 256 / 150,000 steps ($\approx$425 epochs), seed 0, 4 data workers \\
+    Batch / length & 128 / 150,000 steps ($\approx$425 epochs), seed 0, 4 data workers \\
     Diffusion & $T=1000$, linear $\beta$ $10^{-4}\to0.02$, $t\in\{0,\dots,999\}$ \\
-    Loss & Hybrid: $L_{\mathrm{simple}}+0.001\,L_{\mathrm{vlb}}$ \\
+    Loss & Hybrid: $L_{\mathrm{simple}}+L_{\mathrm{vlb}}$ (code: \texttt{mse + vb}, no extra weight) \\
     EMA & 0.9999 \\
     Precision / hardware & bf16 autocast on the model forward; CPU, $\approx$2.0 steps/s, $\approx$21 h \\
     Logging & Every 100 steps: loss, MSE, vb, gradient norm \\
@@ -392,7 +405,7 @@ The test suite (50 passed, 1 skipped for CUDA) was run with Python 3.11 in a cle
 The software versions of the training environment were not recorded.
 
 \paragraph{VAE choice.}
-\texttt{sd-vae-ft-ema} and \texttt{sd-vae-ft-mse} share the same encoder and differ only in the fine-tuned decoder; on COCO 2017 val at $256\times256$ the model card reports rFID 4.42 and PSNR 23.8 for the reconstruction pipeline.
+\texttt{sd-vae-ft-ema} and \texttt{sd-vae-ft-mse} share the same encoder and differ only in the fine-tuned decoder; on COCO 2017 val at $256\times256$ the model card reports rFID 4.42 and PSNR 23.8 for ft-EMA, and rFID 4.70 and PSNR 24.5 for ft-MSE~\cite{stability_sdvae}.
 
 \paragraph{Text encoding.}
 The evaluation passes the attention mask to the CLIP text encoder and training does not. A test with a small, randomly initialized CLIP gave identical pooled outputs, since padding comes after [EOS]; the difference is therefore not a source of bias in this setting.
@@ -446,6 +459,6 @@ Contributions are described using the CRediT taxonomy (\url{https://credit.niso.
 
 \section*{Declaration regarding the use of AI tools}
 
-During the preparation of this manuscript, the authors used Claude for AI-assisted language editing, coding and literature support. The use of the tool was limited to writing the initial draft of the manuscript and to small revisions of code and prose.
+During the preparation of this manuscript, the authors used Claude for AI-assisted language editing, coding and literature support. The use of the tool was limited to writing the initial draft of the report and ensuring code quality and correctness. The authors independently verified the output and retain full responsibility for the accuracy, integrity, originality, and final content of the manuscript.
 
 \end{document}

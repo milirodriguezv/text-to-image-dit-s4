@@ -73,6 +73,7 @@ src/        New code: features, dataset, training, sampling and evaluation (eval
 tests/      Tests
 notebooks/  Tutorial notebook
 outputs/    training/ (log and grids every 10K steps), evaluation/dit_s4_150k/ (metrics, traces, figures, examples)
+text_conditioned_dit_report/  Report: main.tex, references.bib, style file and figure copies (compile from this folder)
 ```
 
 | File in `src/` | Purpose |
@@ -198,7 +199,8 @@ OMP_NUM_THREADS=2 python -u -m eval.execute_plan --ckpt checkpoints/david/last.p
 ```
 
 `execute_plan` generates the images and computes the metrics for the full sweep. For a single
-configuration, use `eval.run generate` and `eval.run metrics`. 
+configuration, use `eval.run generate` and `eval.run metrics`. The delivered evaluation ran on Apple
+Silicon, so use `mps` for the three device options to match it.
 
 The analyses need the full PNGs. So does `src/verify_evaluation.py`, which also depends on the
 absolute paths stored in the traces, so it only works where those paths exist.
