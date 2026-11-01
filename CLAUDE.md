@@ -18,8 +18,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 adaLN-Zero · DiT-S/4 · p=4 · d=384 · T=64 tokens · s = CFG scale.
 
 ## Original specification
-These are the planned values. The final run deviates from them; see "Final run" below and
-the "Final run" section, which prevails. The detailed report notes were removed from the tree; they remain
+These are the planned values. The final run deviates from them; see "Final run" below,
+which prevails. The detailed report notes were removed from the tree; they remain
 in git history at commit `edaed2f` (`docs/REPORT_NOTES.md`, `docs/eval_README.md`).
 
 | Item | Value |
