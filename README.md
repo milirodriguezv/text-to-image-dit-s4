@@ -4,17 +4,20 @@ An adaptation of DiT (Peebles & Xie, 2023) that generates 256×256 images from t
 adaLN-Zero-Text conditioning on VAE latents and CLIP embeddings. The original DiT license is
 in `dit_base/LICENSE.txt`.
 
-**Sources of truth:** [`docs/REPORT_NOTES.md`](docs/REPORT_NOTES.md) and
-[`docs/reparto_trabajo_DiT_detallado.md`](docs/reparto_trabajo_DiT_detallado.md) (in Spanish).
-If they differ, `REPORT_NOTES.md` prevails, and within it §2.1 prevails over the plans in §2
-and §3. No other document in this repo is a source for the final report.
+## Team
+
+| Member | Contribution |
+|---|---|
+| Linda Fei Payeras Olano | Feature extraction and dataset |
+| Milagros Rodriguez Ventura | Text-conditioned model (`models.py`) and its tests |
+| David (`daviloncio`) | Training script and the training run |
+| Daniel Cruz Navarro | Sampling, evaluation and analyses |
 
 ## Results (EMA, 150,000 steps)
 
 Training used 45,174 train2014 images containing people, cropped around them, with batch size
 128. Evaluation used 10,000 val2014 images not filtered for people, with a center crop and a
-single seed. This difference limits how the absolute values can be read. Details and limitations
-are in `REPORT_NOTES.md` (§2.1, §6, §7 and §8).
+single seed. This difference limits how the absolute values can be read. 
 
 | Sampler | s | FID-10K | CLIP L/14 | CLIP B/32 |
 |---|---:|---:|---:|---:|
@@ -28,6 +31,40 @@ are in `REPORT_NOTES.md` (§2.1, §6, §7 and §8).
 
 CLIP Score of the real images: 25.56 (L/14) and 30.15 (B/32).
 
+### Effect of the CFG scale
+
+s = 4 gives the lowest FID in the sweep, and s = 5 gives the highest CLIP Scores.
+
+![FID and CLIP Score as a function of the CFG scale](outputs/evaluation/dit_s4_150k/figuras/cfg_metrics.png)
+
+### Examples from the evaluation
+
+These are the 8 examples kept with the evaluation, which were not selected for quality. Generated
+images use DPM-Solver++ 20 with s = 4. They match the text only partly and show defects in shape
+and composition.
+
+| Caption | Real image | Generated |
+|---|---|---|
+| A white plate with sausage, eggs and other meat. | <img src="outputs/evaluation/dit_s4_150k/muestras/000000434763/real.png" width="128" alt="Real image"> | <img src="outputs/evaluation/dit_s4_150k/muestras/000000434763/final_dpm_cfg_4.png" width="128" alt="Generated image"> |
+| A man walking into the ocean while holding a surfboard. | <img src="outputs/evaluation/dit_s4_150k/muestras/000000332058/real.png" width="128" alt="Real image"> | <img src="outputs/evaluation/dit_s4_150k/muestras/000000332058/final_dpm_cfg_4.png" width="128" alt="Generated image"> |
+| A bird sitting in a field of beautiful purple flowers. | <img src="outputs/evaluation/dit_s4_150k/muestras/000000117237/real.png" width="128" alt="Real image"> | <img src="outputs/evaluation/dit_s4_150k/muestras/000000117237/final_dpm_cfg_4.png" width="128" alt="Generated image"> |
+| A man and two women walking their dogs and hiking in the woods. | <img src="outputs/evaluation/dit_s4_150k/muestras/000000057703/real.png" width="128" alt="Real image"> | <img src="outputs/evaluation/dit_s4_150k/muestras/000000057703/final_dpm_cfg_4.png" width="128" alt="Generated image"> |
+| A woman smiling while standing next to a giraffe. | <img src="outputs/evaluation/dit_s4_150k/muestras/000000377361/real.png" width="128" alt="Real image"> | <img src="outputs/evaluation/dit_s4_150k/muestras/000000377361/final_dpm_cfg_4.png" width="128" alt="Generated image"> |
+| A man on a horse watching another man wrestle a cow. | <img src="outputs/evaluation/dit_s4_150k/muestras/000000246562/real.png" width="128" alt="Real image"> | <img src="outputs/evaluation/dit_s4_150k/muestras/000000246562/final_dpm_cfg_4.png" width="128" alt="Generated image"> |
+| Two giraffes are running through a bushy savannah. | <img src="outputs/evaluation/dit_s4_150k/muestras/000000531607/real.png" width="128" alt="Real image"> | <img src="outputs/evaluation/dit_s4_150k/muestras/000000531607/final_dpm_cfg_4.png" width="128" alt="Generated image"> |
+| A motorized cart fills a train with luggage | <img src="outputs/evaluation/dit_s4_150k/muestras/000000137727/real.png" width="128" alt="Real image"> | <img src="outputs/evaluation/dit_s4_150k/muestras/000000137727/final_dpm_cfg_4.png" width="128" alt="Generated image"> |
+
+### Training grid at 150,000 steps
+
+EMA, DPM-Solver++ 20, s = 4, seed 0. Grids for every 10,000 steps are in `outputs/training/samples/`.
+
+![Generated images for the 8 fixed training prompts](outputs/training/samples/0150000.png)
+
+Prompts, left to right and top to bottom: a dog sitting on a beach at sunset; a red car parked in
+front of a building; a woman riding a bicycle in a park; a plate of food on a wooden table; a cat
+sleeping on a couch; a group of people playing baseball; an airplane flying over mountains; a vase
+of flowers next to a window.
+
 ## Repository layout
 
 ```text
@@ -35,7 +72,6 @@ dit_base/   Paper code: diffusion/ (unchanged), models.py and download.py (adapt
 src/        New code: features, dataset, training, sampling and evaluation (eval/)
 tests/      Tests
 outputs/    training/ (log and grids every 10K steps), evaluation/dit_s4_150k/ (metrics, traces, figures, examples)
-docs/       Report notes, work split, and training and evaluation guides
 ```
 
 | File in `src/` | Purpose |
@@ -46,8 +82,6 @@ docs/       Report notes, work split, and training and evaluation guides
 | `sample_t2i.py` | Image generation from text |
 | `eval/`, `analyze_evaluation.py`, `report_evaluation.py`, `verify_evaluation.py` | Evaluation and analyses |
 
-The files in `outputs/evaluation/dit_s4_150k/` are kept as delivered, so their traces and
-`INFORME.md` still show the paths from before this layout.
 
 ## What is not in git
 

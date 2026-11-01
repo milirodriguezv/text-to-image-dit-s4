@@ -8,7 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Conditioning: **Variant A, adaLN-Zero-Text (global modulation)**. The frozen CLIP pooled text
   vector `e_pooled` is projected and summed with the timestep embedding. Variant B
   (cross-attention with `E_seq`) is out of scope unless explicitly requested.
-- Phase 2 (code development + training): 23/09 – 15/10. Target: full training run started by ~03/10.
+- Status: the 150K run and its evaluation are finished and integrated on `main`.
 
 
 ## Terminology (use exactly these names)
@@ -17,7 +17,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 `E_seq` (77×768, Variant B only) · `∅` null text embedding · `t_emb`, `y_emb`, `c = t_emb + y_emb` ·
 adaLN-Zero · DiT-S/4 · p=4 · d=384 · T=64 tokens · s = CFG scale.
 
-## Fixed specification
+## Original specification
+These are the planned values. The final run deviates from them; see "Final run" below and
+`docs/REPORT_NOTES.md` §2.1, which prevails.
+
 | Item | Value |
 |---|---|
 | Image / latent | 256×256×3 → 4×32×32 (f=8), scale factor 0.18215 |
@@ -39,6 +42,20 @@ adaLN-Zero · DiT-S/4 · p=4 · d=384 · T=64 tokens · s = CFG scale.
 | Data | Train: COCO train2014 (82,783 imgs, first 5 captions each). Eval: 10K imgs/captions from val2014 |
 | Metrics | FID-10K via clean-fid (FID-2K for intermediate ckpts); CLIP Score ViT-L/14 (primary) + ViT-B/32 |
 
+
+## Final run
+| Item | Specification | Final run |
+|---|---|---|
+| Training images | train2014, 82,783 | 45,174 images with a person box and 5 captions |
+| Crop | Center crop | Square crop around the person boxes + 20% margin, resized to 256 |
+| Global batch | 256 | 128 |
+| Training length | 400K steps | 150K steps |
+| Hardware | RTX 3090 | CPU with AVX-512 BF16, ~21 h |
+| ∅ | Frozen CLIP(`""`) | All zeros: `train.py` does not pass `null_path` |
+| Data loading | `DistributedSampler`, `torchrun` | Single process, `DataLoader(shuffle=True)` |
+| Evaluation | 10K val2014, center crop | As specified, not filtered by people; FID-2K at 150K only; Apple Silicon MPS |
+
+Checkpoint: `last.pt`, EMA at step 150,000, SHA-256 `f693fd73…`; `eval.fetch_checkpoint` downloads it.
 
 ## Original-code facts to rely on (verified in `dit_base/` and the original repo)
 - **`training_losses`** (`diffusion/gaussian_diffusion.py`) returns per-sample `[N]` tensors under
@@ -63,23 +80,17 @@ adaLN-Zero · DiT-S/4 · p=4 · d=384 · T=64 tokens · s = CFG scale.
 - **`forward_with_cfg`** takes a doubled batch but only uses the first half of `x`
   (`half = x[:len(x)//2]`, duplicated). It returns guided ε for both halves plus the unguided Σ
   channels. Callers keep `samples.chunk(2)[0]`.
-- **`train.py` internals:**
-  - Checkpoint dict is `{"model", "ema", "opt", "args"}`. Resume must add `"step"`, and should reuse
-    the existing experiment dir. New dirs are `results/NNN-<model>/`, where NNN is the count of existing
-    entries.
-  - Per-rank seed is `global_seed * world_size + rank`.
-  - Only rank 0 logs (`create_logger(None)` on the other ranks).
-  - `update_ema` walks `named_parameters()` only, so buffers such as the frozen ∅ are copied by
-    `deepcopy` and never EMA-updated. That is fine because ∅ is constant.
-  - TF32 is enabled at the top of `train.py` and `sample.py`.
+- **`src/train.py` internals:**
+  - Single process on CUDA or CPU, no MPS. Run with `--results-dir outputs/runs`; new dirs are `NNN-<model>/`,
+    where NNN is the count of existing entries.
+  - Checkpoint dict is `{"model", "ema", "opt", "args", "step"}`: `last.pt` every 10K steps, a permanent one every 50K.
+  - `--use-amp auto` enables bf16 on CUDA or on a CPU with AVX-512 BF16.
+  - `update_ema` walks `named_parameters()` only, so buffers such as ∅ are copied by `deepcopy` and never
+    EMA-updated. That is fine because ∅ is constant.
 - **`download.find_model(path)`** returns `checkpoint["ema"]` when that key exists. Reuse it in
   `sample_t2i.py` and `eval/`.
-  - `environment.yml` pins only `pytorch>=1.13`. On PyTorch ≥2.6, `torch.load` defaults to
-    `weights_only=True` and fails on our checkpoints, which contain an argparse `Namespace` under
-    `"args"`. Pass `weights_only=False`, or save `vars(args)`.
-- **Class-conditional leftovers (deleted on 01/11, in git history):** once `models.py` is modified, `sample.py`, `sample_ddp.py`,
-  `download.py`'s pretrained XL/2 weights and `run_DiT.ipynb` no longer work. They hardcode
-  `y_null = 1000`, `--num-classes` and class-label lists. Treat them as reference only.
+  - On PyTorch ≥2.6, `torch.load` defaults to `weights_only=True` and fails on our checkpoints, which contain
+    an argparse `Namespace` under `"args"`. Pass `weights_only=False`.
 - `models.py` imports `PatchEmbed`, `Attention` and `Mlp` from `timm.models.vision_transformer`.
 
 ## Repository map
@@ -97,115 +108,39 @@ adaLN-Zero · DiT-S/4 · p=4 · d=384 · T=64 tokens · s = CFG scale.
 | `outputs/` | Results | `training/` (log, grids), `evaluation/dit_s4_150k/`; new runs in `outputs/runs/`, not versioned |
 | `docs/` | Docs | `REPORT_NOTES.md`, work split, training and evaluation guides |
 
-Run with `export PYTHONPATH="$PWD/dit_base:$PWD/src"` from the repo root. The steps below are the original
-plan and keep the original file names; `docs/REPORT_NOTES.md` §2.1 records what was actually built.
+Run from the repo root with `export PYTHONPATH="$PWD/dit_base:$PWD/src"`. Exact commands are in `README.md`.
 
-## Implementation steps (in order)
+## Pipeline as built
+1. **Environment:** Python 3.11, `pip install -r requirements.txt` (evaluation versions; training versions
+   were not recorded). Tests: `python -m pytest tests -q`, expected 50 passed and 1 skipped without CUDA.
+2. **Data:** `coco/` with `train2014/`, `val2014/`, and captions and `person_keypoints` for train and val.
+   Never train on train2017, which contains most of val2014.
+3. **Features** (`extract_features.py`, `createCSV.py`, `make_null_embedding.py`): write to `features/train/`
+   `latents.npy` (N, 2, 8, 32, 32; mean + std, unscaled, original + flip), `e_pooled.npy` (N, 5, 768),
+   `image_ids.npy`, `captions.csv` and `null_empty_string.npy`. Extraction is resumable and CPU only. Only images
+   with people are kept. `E_seq` is not stored.
+4. **Dataset** (`dataset_t2i.py`): memory-mapped; each item draws a flip and a caption with `torch.randint`, and
+   returns `z_0 = (mean + std * randn) * 0.18215` (applied once) and `e_pooled`.
+5. **Model** (`dit_base/models.py`): `TextEmbedder` (`proj`, `null_embedding` buffer, `token_drop`);
+   `forward_with_cfg` guides all 4 ε channels. 33,003,776 parameters and zero output at init. `null_path=None`
+   leaves ∅ in zeros.
+6. **Training** (`src/train.py`): `AutocastModelWrapper` applies bf16 to the model forward only; logs loss, mse, vb
+   and grad norm; every 10K steps saves a 4×2 grid with 8 fixed prompts (EMA, DPM-Solver++ 20, s = 4, seed 0).
+7. **Sampling** (`src/sample_t2i.py`): DPM-Solver++ 20 or DDPM 250 from EMA weights, taking ∅ from the checkpoint.
+   This run needs `--allow-zero-null`.
+8. **Evaluation** (`src/eval/`): `prepare` freezes the manifest, `execute_plan` runs FID-2K, the six FID-10K CFG
+   values and DDPM 250. `run` handles a single configuration. `analyze_evaluation.py` computes real-image CLIP and
+   the with/without-people groups, and needs the full PNGs. Never mix FID implementations or sample counts.
 
-### 1. Environment
-- `conda env create -f environment.yml && conda activate DiT`
-- `pip install -U transformers diffusers torchmetrics clean-fid`
-- Windows: `train.py` uses NCCL → use WSL2 or switch the backend to `gloo`.
-- Work on branch `t2i`, so all changes to the original repo stay visible as a diff.
-
-### 2. Data
-- Download COCO `train2014/`, `val2014/`, `annotations/captions_train2014.json`,
-  `annotations/captions_val2014.json`.
-- Never train on train2017 (it contains most of val2014, which would leak the eval set).
-
-### 3. `extract_features.py` (run once)
-- Preprocess: ADM `center_crop_arr` to 256, `ToTensor`, `Normalize([0.5]*3, [0.5]*3)` → [-1, 1].
-- For each image: original + horizontal flip → `vae.encode(x).latent_dist`.
-  Store `cat([mean, std])` (8 ch) in fp16.
-- For each image: first 5 captions → CLIP tokenizer (`padding="max_length"`, `max_length=77`,
-  `truncation=True`) → `pooler_output` (768) in fp16.
-- Outputs (`features/train/`):
-  - `latents.npy` (N, 2, 8, 32, 32)
-  - `e_pooled.npy` (N, 5, 768)
-  - `null_empty_string.npy` (1, 768)
-- `shuffle=False`; row i of every array = image i. Assert ≥5 captions per image.
-- Do NOT store `E_seq` (~50 GB; Variant B only).
-- For val2014: store `e_pooled` for the 10K eval captions, plus the image path/caption list.
-- CHECK: decode row 0's stored `mean` directly with `vae.decode(mean)` (it is stored unscaled) and
-  compare visually with the cropped original.
-
-### 4. `datasets_t2i.py`
-- `np.load(..., mmap_mode="r")`.
-- Per item: random flip f ∈ {0,1} and caption k ∈ {0..4}, drawn with `torch.randint`
-  (not np.random).
-- `z_0 = (mean + std * randn) * 0.18215`; returns `(z_0 [4,32,32] float32, e_pooled [768] float32)`.
-
-### 5. `models.py`
-- Add `TextEmbedder(text_dim=768, hidden_size, dropout_prob, null_path)`:
-  - `proj` = Linear → SiLU → Linear.
-  - `register_buffer("null_embedding", CLIP("") vector)`.
-  - `token_drop` replaces rows with ∅ where `rand < dropout_prob` (or where `force_drop_ids == 1`).
-  - `forward(e, train, force_drop_ids=None)`.
-- `DiT.__init__`: replace `num_classes` with `text_dim=768`;
-  `self.y_embedder = TextEmbedder(...)`; instantiate with `class_dropout_prob=0.15`.
-- `initialize_weights`: delete the `embedding_table` init line; add
-  `nn.init.normal_(std=0.02)` on `proj[0].weight` and `proj[2].weight`.
-  KEEP the adaLN-Zero and final-layer zero-inits.
-- `DiT.forward(x, t, y)`: unchanged (`c = t_embedder(t) + y_embedder(y, self.training)`).
-- `forward_with_cfg`: split `model_out[:, :self.in_channels]` (all 4 channels, not the repo's 3);
-  `y = cat([e_prompt, e_null])`, conditional half first.
-- CHECK:
-  - Parameter count ≈ 33.0M (33,003,776).
-  - `model(randn(2,4,32,32), randint(0,1000,(2,)), randn(2,768))` → shape (2,8,32,32), all zeros at init.
-
-### 6. `train.py`
-- Remove the VAE load and the on-the-fly `vae.encode`; use `CocoLatentDataset`.
-- Keep `DistributedSampler`, `pin_memory`, `drop_last`.
-- Model: `DiT_models["DiT-S/4"](input_size=32, text_dim=768, class_dropout_prob=0.15)`.
-- `diffusion = create_diffusion(timestep_respacing="")` (unchanged).
-- Step:
-  - `t = randint(0, 1000)`
-  - `loss_dict = diffusion.training_losses(model, z0, t, dict(y=e))`
-  - `loss = loss_dict["loss"].mean()`
-- Log `loss`, `mse`, `vb`, grad norm (`clip_grad_norm_(params, inf)`), steps/sec every 100 steps.
-- bf16: `torch.autocast("cuda", dtype=torch.bfloat16)` around the model forward only.
-- Add:
-  - `--max-steps 400000`
-  - `--resume <ckpt>` (restores model, ema, opt, step)
-  - `last.pt` every 10K steps
-  - permanent `{step:07d}.pt` every 50K steps
-- Periodic sampling every 10K steps: EMA model, 8 fixed prompts, fixed seed 0,
-  DPM-Solver++ 20 steps, s = 4.0 → `samples/{step:07d}.png` (4×2 grid).
-- Launch: `torchrun --nnodes=1 --nproc_per_node=1 train.py --model DiT-S/4 --feature-path features/train ...`
-
-### 7. Sanity checks BEFORE the full run
-1. VAE round trip (step 3 CHECK).
-2. Model shape/zero-output test (step 5 CHECK).
-3. Overfit test: 64 images, 1 caption each, no flip, dropout 0, batch 64, ~2K steps.
-   - MSE must fall clearly.
-   - Samples from 3–4 training captions must reproduce THEIR images.
-   - Wrong image for caption → misaligned rows. Same image for every caption → conditioning not wired.
-     Colour noise → scaling/normalization bug.
-4. Measured dropout rate ≈ 15%.
-5. Speed: 1K steps fp32 vs bf16 → pick precision, recompute total hours for 400K steps.
-
-### 8. `sample_t2i.py`
-- Load EMA weights, CLIP, VAE, ∅.
-- `y = cat([e_prompts, e_null.expand(n, -1)])`; `z_T = randn(n, 4, 32, 32)`.
-- DPM-Solver++:
-  - `DPMSolverMultistepScheduler(num_train_timesteps=1000, beta_schedule="linear", beta_start=1e-4, beta_end=0.02, algorithm_type="dpmsolver++", solver_order=2, prediction_type="epsilon")`
-  - `set_timesteps(20)`
-  - Loop: model on `cat([z, z])`, take `[:, :4]`, CFG, `sched.step(...).prev_sample`.
-- DDPM: `create_diffusion("250").p_sample_loop(model.forward_with_cfg, ..., clip_denoised=False, model_kwargs=dict(y=y, cfg_scale=s))`, then keep the first half.
-- Decode: `vae.decode(z / 0.18215).sample` → `((x + 1) / 2).clamp(0, 1)`.
-
-### 9. Evaluation
-- 10K val2014 captions (one per image) → generate 10K images (record sampler, steps, s, ckpt).
-- Reference: the matching 10K real images, same 256 center crop.
-- FID-10K with clean-fid. Never mix FID implementations or sample counts.
-- CLIP Score with `torchmetrics.multimodal.CLIPScore` (ViT-L/14, ViT-B/32).
-- CFG sweep s ∈ {1.0, 1.5, 2, 3, 4, 5} → FID vs CLIP Score plot.
-- Every permanent checkpoint (50K steps): FID-2K to track convergence / memorization
-  (~1,240 epochs over 82,783 images).
+## Known problems, left unfixed to preserve this run
+- ∅ in zeros (see "Final run"). Fix `train.py` before a run that should follow the specification.
+- `update_ema(ema, model, decay=0)` (`src/train.py:244`) overwrites the EMA on resume. Fix before using `--resume`.
+- The comment at `src/dataset_t2i.py:82` is wrong: features are unscaled.
+- `code_sha256` differs from the delivered runs since the 01/11 reorganization.
 
 ## Rules for Claude when working in this repo
 - Do not edit `diffusion/`. Keep paper code in `dit_base/` and new code in `src/`.
 - Keep the adaLN-Zero zero-initialization intact.
-- Any deviation from the table above must be flagged and recorded in `docs/REPORT_NOTES.md`.
+- Any new deviation from the specification must be flagged and recorded in `docs/REPORT_NOTES.md`.
 - When a hyperparameter isn't specified here, say so instead of assuming.
 - Update `docs/REPORT_NOTES.md` (changes log + results tables) whenever code behavior or results change.

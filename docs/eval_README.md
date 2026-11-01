@@ -17,15 +17,16 @@ Resultados: [informe](../outputs/evaluation/dit_s4_150k/INFORME.md),
 [CSV](../outputs/evaluation/dit_s4_150k/resultados.csv),
 [galería](../outputs/evaluation/dit_s4_150k/RESUMEN.html) y
 [análisis visual](../outputs/evaluation/dit_s4_150k/ANALISIS_VISUAL.md).
-`outputs/runs/dit_s4_150k/datos/` contiene métricas, trazas comprimidas y manifest congelado;
+`outputs/evaluation/dit_s4_150k/datos/` contiene métricas, trazas comprimidas y manifest congelado;
 `figuras/` y `muestras/` contienen gráficas y ejemplos. Los PNG completos y pesos
 no se incluyen en Git. Las rutas absolutas de las trazas se conservan como procedencia.
 
 El log de David registra 45.174 imágenes y el extractor selecciona imágenes con
 personas, con recorte alrededor de sus cajas. La evaluación no filtra personas y
 usa recorte central. Todos los CFG/samplers comparten protocolo, pero sus valores
-absolutos también reflejan esa diferencia de datos y recorte. No se han calculado
-métricas separadas con/sin personas ni establecido una causa única de los fallos.
+absolutos también reflejan esa diferencia de datos y recorte. Las métricas separadas con/sin
+personas están en `analisis_complementario/`; describen la diferencia, pero no establecen
+una causa única de los fallos.
 
 ## Instalación
 
