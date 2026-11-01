@@ -9,8 +9,8 @@ in `dit_base/LICENSE.txt`.
 | Member | Contribution |
 |---|---|
 | Linda Fei Payeras Olano | Feature extraction and dataset |
-| Milagros Rodriguez Ventura | Text-conditioned model (`models.py`) and its tests |
-| David (`daviloncio`) | Training script and the training run |
+| Milagros Rodriguez Ventura | Text-conditioned model (`models.py`) and its tests + final clean up of the repository + documentation |
+| David López Valdivia | Training script and the training run |
 | Daniel Cruz Navarro | Sampling, evaluation and analyses |
 
 ## Results (EMA, 150,000 steps)
@@ -159,7 +159,6 @@ These are the arguments stored in the checkpoint, except `--results-dir`. Output
 - **Precision:** `--use-amp auto` enables bf16 on CUDA or on a CPU with AVX-512 BF16. Otherwise it
   runs in fp32. The original run used a CPU with bf16.
 
-More detail in [`docs/README_training.md`](docs/README_training.md) (in Spanish).
 
 ### 5. Generating images
 
@@ -188,28 +187,9 @@ OMP_NUM_THREADS=2 python -u -m eval.execute_plan --ckpt checkpoints/david/last.p
 ```
 
 `execute_plan` generates the images and computes the metrics for the full sweep. For a single
-configuration, use `eval.run generate` and `eval.run metrics`. Those commands, the complementary
-analyses (`src/analyze_evaluation.py`) and resuming are covered in
-[`docs/eval_README.md`](docs/eval_README.md) (in Spanish).
+configuration, use `eval.run generate` and `eval.run metrics`. 
 
 The analyses need the full PNGs. So does `src/verify_evaluation.py`, which also depends on the
 absolute paths stored in the traces, so it only works where those paths exist.
 
-## Known issues
 
-These were left unfixed so the code stays the one that produced this run. Details are in
-`docs/REPORT_NOTES.md` (§2.1 and §7).
-
-- **∅ is all zeros:** `src/train.py` does not pass `null_path` to the model, so ∅ stays at zeros
-  instead of CLIP("") as the specification required. Keep this to reproduce this run; fix it to
-  follow the specification.
-- **`--allow-zero-null`:** `sample_t2i.py` rejects an all-zero ∅ without this option, and evaluating
-  this run needs it.
-- **Resuming training:** `update_ema(ema, model, decay=0)` (`src/train.py:244`) runs after the
-  checkpoint is loaded and overwrites the EMA. This run did not resume, so it was not affected. Fix
-  it before using `--resume`.
-- **Incorrect comment:** `src/dataset_t2i.py:82` says the features already include 0.18215. The
-  scale is applied only once, on line 84.
-- **Code fingerprint:** this layout moved files, so new runs record a different `code_sha256` from
-  the delivered results, and a partial generation from the earlier code cannot be continued with
-  `--resume`.
