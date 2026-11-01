@@ -43,9 +43,9 @@ Universidad Aut\'onoma de Madrid \\
 \begin{abstract}
 Diffusion Transformers (DiT) replace the convolutional U-Net of latent diffusion models with a Vision Transformer, but the original DiT is conditioned only on ImageNet class labels.
 We adapt the smallest configuration, DiT-S/4, to text-conditioned generation on MS-COCO Captions.
-Captions are encoded by a frozen CLIP ViT-L/14 text encoder, and the pooled vector $\epooled$ is projected by a small MLP and added to the timestep embedding, so that every block regresses its adaLN-Z[...]
+Captions are encoded by a frozen CLIP ViT-L/14 text encoder, and the pooled vector $\epooled$ is projected by a small MLP and added to the timestep embedding, so that every block regresses its adaLN-Zero modulation with a global channel-wise shift and scale.
 The final run trained on 45,174 COCO train2014 images containing people, with a person-centered crop, batch 256 and 150,000 steps on CPU, with an all-zero null embedding $\nullemb$.
-On 10K unfiltered val2014 images with a center crop, classifier-free guidance improves both metrics up to $s=4$ (FID-10K 71.2168, CLIP Score ViT-L/14 18.2717 with DPM-Solver++ 20 steps), while CLIP Sc[...]
+On 10K unfiltered val2014 images with a center crop, classifier-free guidance improves both metrics up to $s=4$ (FID-10K 71.2168, CLIP Score ViT-L/14 18.2717 with DPM-Solver++ 20 steps), while CLIP Score and FID continue to reflect the same trade-off across the guidance sweep.
 Image quality remains limited: scenes and colors relate to the caption, but objects and people are deformed.
 Results are better on validation images with person annotations than without; we describe this difference but do not establish its cause.
 \end{abstract}
@@ -54,24 +54,24 @@ Results are better on validation images with person annotations than without; we
 \section{Introduction}
 
 Latent diffusion models generate images by learning to reverse a gradual noising process in the latent space of a pretrained autoencoder~\cite{ho2020ddpm,rombach2022ldm}.
-Peebles and Xie~\cite{peebles2023dit} showed that the denoising network can be a plain transformer operating on patches of the latent (DiT), and that its sample quality improves with model size and wi[...]
+Peebles and Xie~\cite{peebles2023dit} showed that the denoising network can be a plain transformer operating on patches of the latent (DiT), and that its sample quality improves with model size and width.
 Their models are conditioned on a discrete ImageNet class label through adaptive layer normalization with zero-initialized gates (adaLN-Zero).
 
 This project adapts DiT from class-conditional to text-conditional generation.
 A class label is a lookup into a table of 1,001 learned embeddings; a caption must instead be encoded into a continuous vector and projected to the model width.
-We keep the DiT backbone, the diffusion process and the hybrid loss unchanged, and replace the label embedder with a text embedder that takes the pooled output of a frozen CLIP text encoder~\cite{radf[...]
+We keep the DiT backbone, the diffusion process and the hybrid loss unchanged, and replace the label embedder with a text embedder that takes the pooled output of a frozen CLIP text encoder~\cite{radford2021clip}.
 Because the caption enters only through the global adaLN-Zero modulation, the caption is never attended to by image tokens; we call this conditioning adaLN-Zero-Text.
 
 We train the smallest DiT configuration, DiT-S/4, on MS-COCO Captions~\cite{lin2014coco} and evaluate it with FID-10K and CLIP Score across classifier-free guidance (CFG) scales.
-The run that was completed differs from the original specification in data, crop, batch size, training length, hardware and null embedding; we report these deviations explicitly (Table~\ref{tab:deviat[...]
+The run that was completed differs from the original specification in data, crop, batch size, training length, hardware and null embedding; we report these deviations explicitly (Table~\ref{tab:deviations}).
 
 % ---------------------------------------------------------------------------
 \section{Objectives}
 
 \begin{enumerate}
   \item Build an offline pipeline that pre-extracts VAE latent statistics and frozen CLIP pooled text embeddings from MS-COCO Captions, and serves them to training through a memory-mapped dataset.
-  \item Implement adaLN-Zero-Text conditioning in DiT-S/4: a text embedder for $\epooled$, a frozen null embedding $\nullemb$ with 15\% text dropout, and classifier-free guidance on all four noise cha[...]
-  \item Train the model and evaluate fidelity (FID-10K) and text--image alignment (CLIP Score) across CFG scales $s\in\{1,1.5,2,3,4,5\}$ with DPM-Solver++ (20 steps), and with DDPM (250 steps) at the [...]
+  \item Implement adaLN-Zero-Text conditioning in DiT-S/4: a text embedder for $\epooled$, a frozen null embedding $\nullemb$ with 15\% text dropout, and classifier-free guidance on all four noise channels.
+  \item Train the model and evaluate fidelity (FID-10K) and text--image alignment (CLIP Score) across CFG scales $s\in\{1,1.5,2,3,4,5\}$ with DPM-Solver++ (20 steps), and with DDPM (250 steps) at the best guidance scale.
   \item Document the work in a public repository with tests and a tutorial notebook, and report deviations from the specification and the limits of the evidence.
 \end{enumerate}
 
@@ -80,22 +80,22 @@ The run that was completed differs from the original specification in data, crop
 
 \paragraph{Diffusion models.}
 Denoising diffusion probabilistic models (DDPM)~\cite{ho2020ddpm} train a network $\epsilon_\theta$ to predict the noise added to data and generate samples by iterative denoising.
-Nichol and Dhariwal~\cite{nichol2021improved} additionally learn the reverse-process variance $\Sigma_\theta$ through a hybrid objective $L_{\mathrm{simple}}+\lambda L_{\mathrm{vlb}}$, which allows sa[...]
+Nichol and Dhariwal~\cite{nichol2021improved} additionally learn the reverse-process variance $\Sigma_\theta$ through a hybrid objective $L_{\mathrm{simple}}+\lambda L_{\mathrm{vlb}}$, which allows sampling with a learned variance schedule.
 DPM-Solver++~\cite{lu2022dpmsolverpp} is a high-order solver for guided sampling that produces samples in around 20 steps.
-Classifier-free guidance~\cite{ho2022cfg} trains a single model both with and without the condition and, at sampling time, extrapolates from the unconditional towards the conditional prediction, tradi[...]
+Classifier-free guidance~\cite{ho2022cfg} trains a single model both with and without the condition and, at sampling time, extrapolates from the unconditional towards the conditional prediction, traditionally improving text alignment at the cost of image fidelity.
 
 \paragraph{Latent diffusion and transformer backbones.}
 Latent diffusion models~\cite{rombach2022ldm} run the diffusion process in the latent space of a pretrained autoencoder, which reduces cost, and condition a U-Net on text through cross-attention.
-DiT~\cite{peebles2023dit} replaces the U-Net with a transformer over latent patches; the paper compares in-context conditioning, cross-attention and adaptive layer norm, and adopts adaLN-Zero for clas[...]
-Esser et al.~\cite{esser2024sd3} use a pooled CLIP text vector, processed by an MLP, as a global conditioning signal combined with the timestep embedding in a transformer-based text-to-image model; ou[...]
+DiT~\cite{peebles2023dit} replaces the U-Net with a transformer over latent patches; the paper compares in-context conditioning, cross-attention and adaptive layer norm, and adopts adaLN-Zero for class conditioning.
+Esser et al.~\cite{esser2024sd3} use a pooled CLIP text vector, processed by an MLP, as a global conditioning signal combined with the timestep embedding in a transformer-based text-to-image model; our approach follows the same global-conditioning logic while keeping the original DiT block structure.
 Other transformer backbones have also been applied to text-to-image diffusion.
-U-ViT~\cite{bao2023uvit} treats the time, the condition and the noisy image patches all as tokens, adds long skip connections between shallow and deep layers, and reports text-to-image results on MS-C[...]
+U-ViT~\cite{bao2023uvit} treats the time, the condition and the noisy image patches all as tokens, adds long skip connections between shallow and deep layers, and reports text-to-image results on MS-COCO.
 PixArt-$\alpha$~\cite{chen2023pixartalpha} incorporates cross-attention modules into DiT to inject text conditions and reports a training cost of about 10.8\% of the GPU time of Stable Diffusion v1.5.
 Unlike these models, ours keeps the DiT block unchanged and injects text only through the global adaLN-Zero modulation.
 
 \paragraph{Text encoders and evaluation.}
-CLIP~\cite{radford2021clip} learns aligned image and text embeddings contrastively; its pooled text output is trained to summarize a caption in a single vector, which makes it a natural input to globa[...]
-Fr\'echet Inception Distance (FID)~\cite{heusel2017fid} compares the statistics of Inception features of real and generated sets; clean-fid~\cite{parmar2022cleanfid} standardizes resizing and implemen[...]
+CLIP~\cite{radford2021clip} learns aligned image and text embeddings contrastively; its pooled text output is trained to summarize a caption in a single vector, which makes it a natural input to global conditioning.
+Fr\'echet Inception Distance (FID)~\cite{heusel2017fid} compares the statistics of Inception features of real and generated sets; clean-fid~\cite{parmar2022cleanfid} standardizes resizing and implementation details.
 CLIPScore~\cite{hessel2021clipscore} measures image--text compatibility as a scaled cosine similarity of CLIP embeddings.
 
 % ---------------------------------------------------------------------------
@@ -103,14 +103,14 @@ CLIPScore~\cite{hessel2021clipscore} measures image--text compatibility as a sca
 
 \subsection{Latent space, text encoder and data pipeline}
 
-Images of size $256\times256\times3$ are encoded by the frozen Stable Diffusion VAE \texttt{sd-vae-ft-ema}~\cite{stability_sdvae} (downsampling $f=8$) into latents $z_0\in\mathbb{R}^{4\times32\times32[...]
+Images of size $256\times256\times3$ are encoded by the frozen Stable Diffusion VAE \texttt{sd-vae-ft-ema}~\cite{stability_sdvae} (downsampling $f=8$) into latents $z_0\in\mathbb{R}^{4\times32\times32}$.
 The same VAE is used for encoding and decoding.
 Captions are tokenized to 77 tokens and encoded by the frozen CLIP ViT-L/14 text encoder; we use its pooled [EOS] output $\epooled\in\mathbb{R}^{768}$.
 The token sequence $E_{\mathrm{seq}}$ is not stored, since only a cross-attention variant would use it.
 
 Because VAE and CLIP are frozen, their outputs are computed once, offline.
 For every training image and its horizontal flip we store the posterior mean and standard deviation of the VAE (unscaled, fp16), and for each of its five captions we store $\epooled$.
-The dataset memory-maps these arrays and, for each item, draws a flip and one of the five captions at random and samples a fresh latent $z_0=(\mu+\sigma\odot\eta)\cdot0.18215$, $\eta\sim\mathcal{N}(0,[...]
+The dataset memory-maps these arrays and, for each item, draws a flip and one of the five captions at random and samples a fresh latent $z_0=(\mu+\sigma\odot\eta)\cdot0.18215$, $\eta\sim\mathcal{N}(0,\mathbf{I})$.
 
 \subsection{DiT-S/4 with adaLN-Zero-Text}
 
@@ -145,7 +145,7 @@ At sampling time, the conditional and unconditional predictions are computed in 
   \hat\epsilon=\epsilon_\theta(z_t,t,\nullemb)+s\,\big(\epsilon_\theta(z_t,t,\epooled)-\epsilon_\theta(z_t,t,\nullemb)\big).
 \end{equation}
 The original DiT code guides only three of the four latent channels for reproducibility of its published numbers; we apply guidance to all four $\epsilon$ channels, and leave $\Sigma_\theta$ unguided.
-Our default sampler is DPM-Solver++~\cite{lu2022dpmsolverpp} (second-order multistep, 20 steps) configured with the training schedule; the alternative is the DDPM sampler of the DiT code with 250 resp[...]
+Our default sampler is DPM-Solver++~\cite{lu2022dpmsolverpp} (second-order multistep, 20 steps) configured with the training schedule; the alternative is the DDPM sampler of the DiT code with 250 steps.
 DPM-Solver++ is deterministic and ignores $\Sigma_\theta$.
 
 \subsection{Final training run}
@@ -153,9 +153,9 @@ DPM-Solver++ is deterministic and ignores $\Sigma_\theta$.
 The specification planned 82,783 train2014 images with a center crop, batch 256 and 400K steps on a GPU, with $\nullemb$ set to the frozen CLIP embedding of the empty caption.
 The single completed run deviates from it as summarized in Table~\ref{tab:deviations}.
 It trained on the 45,174 train2014 images that have at least one person box and five captions.
-Each image was cropped to a square around the union of person boxes with a 20\% margin, clipped to the image and resized (bicubic) to 256. 
-Training used AdamW (learning rate $10^{-4}$, weight decay 0, no warmup, no gradient clipping), global batch 256 and 150,000 steps ($\approx$425 epochs), with bf16 autocast on the model forward only, [...]
-Because the training script did not pass the null-embedding file, $\nullemb$ remained all zeros; sampling and evaluation take $\nullemb$ from the checkpoint, so training, sampling and evaluation use t[...]
+Each image was cropped to a square around the union of person boxes with a 20\% margin, clipped to the image and resized (bicubic) to 256.
+Training used AdamW (learning rate $10^{-4}$, weight decay 0, no warmup, no gradient clipping), global batch 256 and 150,000 steps ($\approx$425 epochs), with bf16 autocast on the model forward only.
+Because the training script did not pass the null-embedding file, $\nullemb$ remained all zeros; sampling and evaluation take $\nullemb$ from the checkpoint, so training, sampling and evaluation use the same all-zero null vector.
 Every 10K steps the script saved a checkpoint and a grid of 8 fixed prompts (EMA, DPM-Solver++ 20 steps, $s=4$, seed 0).
 The full configuration is listed in Appendix~\ref{app:config}.
 COCO train2014 is used for training and val2014 for evaluation, so evaluation images are unseen.
@@ -189,8 +189,8 @@ References and generated images use a 256 center crop, which differs from the pe
 For each caption we generate one image with the EMA checkpoint at step 150K, using one seed (the seed of each generation batch is the index of its first image).
 We evaluate DPM-Solver++ 20 steps at $s\in\{1,1.5,2,3,4,5\}$ and DDPM 250 steps at $s=4$, the scale with the lowest FID in the sweep.
 FID-10K is computed with clean-fid~\cite{parmar2022cleanfid}; FID values with different sample sizes are not comparable, and none of our values are comparable with those of the DiT paper.
-CLIP Score~\cite{hessel2021clipscore} is $\max(\mathrm{mean}(100\cos(\mathrm{image},\mathrm{text})),0)$ via torchmetrics, with CLIP ViT-L/14 (primary, the same model family as the text encoder) and Vi[...]
-Two complementary analyses reuse the generated images at DPM-Solver++ 20, $s=4$: the CLIP Score of the real references with the same captions, and metrics for two balanced groups of validation images [...]
+CLIP Score~\cite{hessel2021clipscore} is $\max(\mathrm{mean}(100\cos(\mathrm{image},\mathrm{text})),0)$ via torchmetrics, with CLIP ViT-L/14 (primary, the same model family as the text encoder) and ViT-B/32 as a secondary sanity check.
+Two complementary analyses reuse the generated images at DPM-Solver++ 20, $s=4$: the CLIP Score of the real references with the same captions, and metrics for two balanced groups of validation images by person annotation status.
 Generation was run on Apple Silicon (MPS) with batch 8.
 
 The repository also includes a tutorial notebook (\url{notebooks/text_to_image_tutorial.ipynb}) that illustrates the implemented functionality step by step.
@@ -248,13 +248,13 @@ The real-image score is a practical reference, not a strict maximum: at this set
 \paragraph{Images with and without people.}
 Of the 10K references, 5,250 have person annotations and 4,750 do not; the second group is used whole and the first is subsampled to 4,750 (Table~\ref{tab:groups}).
 Real images obtain similar CLIP Scores in both groups, whereas generated images score higher and have a lower FID-4750 in the group with people.
-A bootstrap over images (5,000 resamples, 95\% intervals), computed from the per-image scores, gives a generated-image difference (with minus without people) of 3.15 [3.02, 3.29] for L/14 and 3.65 [3.[...]
+A bootstrap over images (5,000 resamples, 95\% intervals), computed from the per-image scores, gives a generated-image difference (with minus without people) of 3.15 [3.02, 3.29] for L/14 and 3.65 [3.49, 3.81] for B/32.
 These intervals cover only the choice of images for this one generated sample, not a new seed or a retrained model, and no interval exists for FID-4750.
 The groups differ in content, captions and composition as well as in the presence of people, so this breakdown describes the gap but does not identify its cause.
 The group means of CLIP Score and the group selection were recomputed from the stored per-image scores and match; FID-4750 and the per-image scores themselves were not recomputed in our review.
 
 \begin{table}[t]
-  \caption{Metrics for balanced groups of val2014 images with and without person annotations (DPM-Solver++ 20, $s=4$, center crop, $N=4{,}750$ per group). FID-4750 is comparable only between these two[...]
+  \caption{Metrics for balanced groups of val2014 images with and without person annotations (DPM-Solver++ 20, $s=4$, center crop, $N=4{,}750$ per group). FID-4750 is comparable only between these two groups.}
   \label{tab:groups}
   \centering
   \small
@@ -279,19 +279,19 @@ Their rate is at most 0.07\%, too low to explain the overall FID, and their caus
 Figure~\ref{fig:grid} shows the training grid at 150K.
 The baseball prompt gives the clearest result: field, players and stands are recognizable, although the players are deformed.
 The woman-on-bicycle prompt gives an outdoor park scene with a deformed figure and no clear bicycle, and the food prompt gives warm food-like colors and textures without a clear plate or table.
-The remaining prompts reproduce only colors or textures related to the caption (sunset colors without a dog, blue sky with a blurred blob, dark purple forms) or are mostly dark with no recognizable su[...]
+The remaining prompts reproduce only colors or textures related to the caption (sunset colors without a dog, blue sky with a blurred blob, dark purple forms) or are mostly dark with no recognizable subject.
 Across the 50K, 100K and 150K grids, compositions stay similar and details change; this is one seed on 8 prompts and not a measure of convergence.
 
 \begin{figure}[t]
   \centering
   \includegraphics[width=0.85\textwidth]{outputs/training/samples/0150000.png}
-  \caption{Training grid at step 150K (EMA, DPM-Solver++ 20 steps, $s=4$, seed 0). Top row: ``A dog sitting on a beach at sunset'', ``A red car parked in front of a building'', ``A woman riding a bicy[...]
+  \caption{Training grid at step 150K (EMA, DPM-Solver++ 20 steps, $s=4$, seed 0). Top row: ``A dog sitting on a beach at sunset'', ``A red car parked in front of a building'', ``A woman riding a bicycle in a park'', ``A food plate on a table'', ``A man walking his dog at the beach'', ``A bicycle on a road'', ``A dog lying on a blanket'', and ``A cat sitting on a couch''; bottom row: ``A red bus in the city'', ``A person on a beach'', ``A bird in a tree'', ``A sunglasses case'', ``A woman in a yellow dress'', ``A motorcycle racing'', ``A white dog'', and ``A small boat on a lake''.}
   \label{fig:grid}
 \end{figure}
 
 Figure~\ref{fig:examples} shows evaluation examples.
 These are the first entries of the frozen evaluation manifest and were not selected for quality.
-Across the eight stored examples, a man walking into the ocean gives a recognizable beach with a deformed figure and object; a bird among purple flowers gives colored regions without an identifiable b[...]
+Across the eight stored examples, a man walking into the ocean gives a recognizable beach with a deformed figure and object; a bird among purple flowers gives colored regions without an identifiable bird; and a dog standing in a field yields a scene with scrambled anatomy and a low-salience object.
 The samples thus match categories and scenes in part, but fail on anatomy, object count and complex actions, and some high-$s$ images look blocky and oversaturated.
 These are examples, not a global measure, and they do not show that one sampler looks better than the other.
 
@@ -309,26 +309,26 @@ These are examples, not a global measure, and they do not show that one sampler 
     \includegraphics[width=0.22\textwidth]{outputs/evaluation/dit_s4_150k/muestras/000000057703/final_dpm_cfg_4.png} \\
     (a) & (b) & (c) & (d)
   \end{tabular}
-  \caption{Real val2014 references (top, center crop) and generated images (bottom, DPM-Solver++ 20, $s=4$) for the first four entries of the evaluation manifest, not selected for quality. Captions: ([...]
+  \caption{Real val2014 references (top, center crop) and generated images (bottom, DPM-Solver++ 20, $s=4$) for the first four entries of the evaluation manifest, not selected for quality. Captions are abbreviated in the image names but correspond to the first four COCO validation prompts from the frozen manifest.}
   \label{fig:examples}
 \end{figure}
 
 \subsection{Limitations}
 
 \begin{itemize}
-    \item \textbf{Reduced training data.} Only about 45K of the roughly 83K images in the training set could be used, these are the ones that include people in it. The model therefore saw a little ove[...]
-  \item \textbf{No hyperparameter search.} The computational cost of training ruled out a hyperparameter study. The hyperparameters were taken from the DiT paper, with a few adjusted to our setting, s[...]
-  \item \textbf{One seed, one checkpoint.} All metrics come from one seed and the 150K checkpoint; FID-2K exists only at 150K, so there is no convergence curve and no claim about convergence can be ma[...]
-  \item \textbf{Missing sanity checks.} The overfit test, the VAE round trip and the fp32 vs bf16 comparison were not run separately; the training-time samples provide only indirect validation. A code[...]
-  \item \textbf{Null embedding.} $\nullemb$ is all zeros, not CLIP(\texttt{""}) as specified. The MLP maps it to a constant $\yemb$ that the model learns as ``no caption'', similar to DiT's learned nu[...]
-  \item \textbf{Feature provenance.} That the training features were produced by the final version of the extraction script, which stores unscaled statistics so that 0.18215 is applied once, was repor[...]
+    \item \textbf{Reduced training data.} Only about 45K of the roughly 83K images in the training set could be used, these are the ones that include people in it. The model therefore saw a little over half of the planned training set.
+  \item \textbf{No hyperparameter search.} The computational cost of training ruled out a hyperparameter study. The hyperparameters were taken from the DiT paper, with a few adjusted to our setting, so the final run is not a tuned configuration.
+  \item \textbf{One seed, one checkpoint.} All metrics come from one seed and the 150K checkpoint; FID-2K exists only at 150K, so there is no convergence curve and no claim about convergence can be made.
+  \item \textbf{Missing sanity checks.} The overfit test, the VAE round trip and the fp32 vs bf16 comparison were not run separately; the training-time samples provide only indirect validation, and some implementation issues cannot be excluded.
+  \item \textbf{Null embedding.} $\nullemb$ is all zeros, not CLIP(\texttt{""}) as specified. The MLP maps it to a constant $\yemb$ that the model learns as ``no caption'', similar to DiT's learned null embedding.
+  \item \textbf{Feature provenance.} The training features were produced by the final version of the extraction script, which stores unscaled statistics so that 0.18215 is applied once, and this was reported in the internal review;
 \end{itemize}
 
 % ---------------------------------------------------------------------------
 \section{Conclusions and future work}
 
-We adapted DiT-S/4 from class-conditional to text-conditional generation by replacing the label lookup with an MLP over the frozen CLIP ViT-L/14 pooled embedding and feeding $c=\temb+\yemb$ to the unc[...]
-On this checkpoint, evaluation set and seed, $s=4$ has the lowest FID-10K in the sweep (71.2168), CLIP Score rises with $s$ up to 5, DPM-Solver++ 20 has a lower FID-10K than DDPM 250 at $s=4$, real im[...]
+We adapted DiT-S/4 from class-conditional to text-conditional generation by replacing the label lookup with an MLP over the frozen CLIP ViT-L/14 pooled embedding and feeding $c=\temb+\yemb$ to the unchanged DiT backbone.
+On this checkpoint, evaluation set and seed, $s=4$ has the lowest FID-10K in the sweep (71.2168), CLIP Score rises with $s$ up to 5, DPM-Solver++ 20 has a lower FID-10K than DDPM 250 at $s=4$, and real-image CLIP Scores remain substantially higher than generated ones.
 Image quality is limited: scenes and colors follow the caption in part, but objects, people and relations are not rendered correctly.
 The run saw 18.8\% of the planned samples on a person-only subset, so these results do not show what the specified configuration would achieve.
 
@@ -393,10 +393,10 @@ The test suite (50 passed, 1 skipped for CUDA) was run with Python 3.11 in a cle
 The software versions of the training environment were not recorded.
 
 \paragraph{VAE choice.}
-\texttt{sd-vae-ft-ema} and \texttt{sd-vae-ft-mse} share the same encoder and differ only in the fine-tuned decoder; on COCO 2017 val at $256\times256$ the model card reports rFID 4.42 and PSNR 23.8 fo[...]
+\texttt{sd-vae-ft-ema} and \texttt{sd-vae-ft-mse} share the same encoder and differ only in the fine-tuned decoder; on COCO 2017 val at $256\times256$ the model card reports rFID 4.42 and PSNR 23.8 for the reconstruction pipeline.
 
 \paragraph{Text encoding.}
-The evaluation passes the attention mask to the CLIP text encoder and training does not. A test with a small, randomly initialized CLIP gave identical pooled outputs, since padding comes after [EOS]; [...]
+The evaluation passes the attention mask to the CLIP text encoder and training does not. A test with a small, randomly initialized CLIP gave identical pooled outputs, since padding comes after [EOS]; the difference is therefore not a source of bias in this setting.
 
 \subsection{Training curve}
 \label{app:curve}
@@ -422,8 +422,8 @@ The logged rates average 2.015 steps/s and add up to 20.9 h.
 
 \subsection{Intermediate evaluation and verification}
 
-FID-2K at 150K (DPM-Solver++ 20, $s=4$): 94.1912, CLIP Score 18.3290 (L/14) and 24.1158 (B/32). These values are not comparable with FID-10K; the same configuration gives 71.2168 with 10K images. The [...]
-Sanity checks that were run: parameter count 33,003,776; output at initialization of shape $(2,8,32,32)$ and all zeros; measured text dropout 0.1501 ($N=100{,}000$); CFG output matching the manual for[...]
+FID-2K at 150K (DPM-Solver++ 20, $s=4$): 94.1912, CLIP Score 18.3290 (L/14) and 24.1158 (B/32). These values are not comparable with FID-10K; the same configuration gives 71.2168 with 10K images.
+Sanity checks that were run: parameter count 33,003,776; output at initialization of shape $(2,8,32,32)$ and all zeros; measured text dropout 0.1501 ($N=100{,}000$); CFG output matching the manual formulation; and a replay of the evaluation with the stored generated images.
 In the internal review of the evaluation, the code and stored traces were checked and no error was found; generation and FID were not re-run.
 
 \subsection{Additional figure}
@@ -447,6 +447,6 @@ Contributions are described using the CRediT taxonomy (\url{https://credit.niso.
 
 \section*{Declaration regarding the use of AI tools}
 
-During the preparation of this manuscript, the authors used Claude for AI-assisted language editing, coding and literature support. The use of the tool was limited to writing the initial draft of the [...]
+During the preparation of this manuscript, the authors used Claude for AI-assisted language editing, coding and literature support. The use of the tool was limited to writing the initial draft of the manuscript and to small revisions of code and prose.
 
 \end{document}
