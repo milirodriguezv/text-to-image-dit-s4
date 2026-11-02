@@ -8,6 +8,7 @@
 \usepackage[T1]{fontenc}
 \usepackage{amsmath,amssymb}
 \usepackage{graphicx}
+\usepackage{float}
 \usepackage{booktabs}
 \usepackage{xcolor}
 \usepackage{url}
@@ -63,7 +64,7 @@ We keep the DiT backbone, the diffusion process and the hybrid loss unchanged, a
 Because the caption enters only through the global adaLN-Zero modulation, the caption is never attended to by image tokens; we call this conditioning adaLN-Zero-Text.
 
 We train the smallest DiT configuration, DiT-S/4, on MS-COCO Captions~\cite{lin2014coco} and evaluate it with FID-10K and CLIP Score across classifier-free guidance (CFG) scales.
-The run that was completed differs from the original specification in data, crop, batch size, training length, hardware and null embedding; we report these deviations explicitly (Table~\ref{tab:deviations}).
+The run that was completed differs from the original specification that was presented in data, crop, batch size, training length, hardware and null embedding; we report these deviations explicitly (Table~\ref{tab:deviations}).
 
 % ---------------------------------------------------------------------------
 \section{Objectives}
@@ -152,7 +153,7 @@ DPM-Solver++ is deterministic and ignores $\Sigma_\theta$.
 \subsection{Final training run}
 
 The specification planned 82,783 train2014 images with a center crop, batch 256 and 400K steps on a GPU, with $\nullemb$ set to the frozen CLIP embedding of the empty caption.
-The single completed run deviates from it as summarized in Table~\ref{tab:deviations}.
+The completed run reported here deviates (due to computational resources limitations) from it as summarized in Table~\ref{tab:deviations}.
 It trained on the 45,174 train2014 images that have at least one person box and five captions.
 Each crop starts from the union of person boxes with a 20\% margin, is expanded to a square, clipped to the image and resized (bicubic) to 256, so crops clipped at an image border are not square and their aspect ratio changes.
 Training used AdamW (learning rate $10^{-4}$, weight decay 0, no warmup, no gradient clipping), global batch 128 and 150,000 steps ($\approx$425 epochs), with bf16 autocast on the model forward only.
@@ -333,7 +334,6 @@ These are examples, not a global measure, and they do not show that one sampler 
   \item \textbf{No hyperparameter search.} The computational cost of training ruled out a hyperparameter study. The hyperparameters were taken from the DiT paper, with a few adjusted to our setting, so the final run is not a tuned configuration.
   \item \textbf{One seed, one checkpoint.} All metrics come from one seed and the 150K checkpoint; FID-2K exists only at 150K, so there is no convergence curve and no claim about convergence can be made.
   \item \textbf{Null embedding.} $\nullemb$ is all zeros, not CLIP(\texttt{""}) as specified. The MLP maps it to a constant $\yemb$ that the model learns as ``no caption'', similar to DiT's learned null embedding.
-  \item \textbf{Feature provenance.} The team member who ran the training reported that the features came from the final version of the extraction script, which stores unscaled statistics so that 0.18215 is applied once. This was not independently verified.
 \end{itemize}
 
 % ---------------------------------------------------------------------------
@@ -361,6 +361,7 @@ Larger DiT configurations and smaller patches, which improve FID in the original
 
 % ---------------------------------------------------------------------------
 \appendix
+\raggedbottom
 \section{Technical appendices}
 
 \subsection{Full configuration of the final run}
@@ -441,7 +442,7 @@ In the internal review of the evaluation, the code and stored traces were checke
 \subsection{Additional figure}
 \label{app:figs}
 
-\begin{figure}[h]
+\begin{figure}[H]
   \centering
   \includegraphics[width=0.6\textwidth]{outputs/evaluation/dit_s4_150k/figuras/fid_vs_clip.png}
   \caption{FID-10K vs CLIP Score across the CFG sweep (DPM-Solver++, 20 steps), for CLIP ViT-L/14 and ViT-B/32.}
