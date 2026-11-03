@@ -6,28 +6,27 @@ in `dit_base/LICENSE.txt`.
 
 ## Team
 
-| Member | Contribution |
-|---|---|
-| Linda Fei Payeras Olano | Feature extraction and dataset |
+| Member                     | Contribution                                                                                          |
+| -------------------------- | ----------------------------------------------------------------------------------------------------- |
+| Linda Fei Payeras Olano    | Feature extraction and dataset                                                                        |
 | Milagros Rodriguez Ventura | Text-conditioned model (`models.py`) and its tests + final clean up of the repository + documentation |
-| David López Valdivia | Training script and the training run |
-| Daniel Cruz Navarro | Sampling, evaluation and analyses |
+| David López Valdivia       | Training script and the training run                                                                  |
+| Daniel Cruz Navarro        | Sampling, evaluation and analyses                                                                     |
 
 ## Results (EMA, 150,000 steps)
 
-Training used 45,174 train2014 images containing people, cropped around them, with batch size
-128. Evaluation used 10,000 val2014 images not filtered for people, with a center crop and a
-single seed. This difference limits how the absolute values can be read. 
+Training used 45,174 train2014 images containing people, cropped around them, with batch size 128. Evaluation used 10,000 val2014 images not filtered for people, with a center crop and a
+single seed. This difference limits how the absolute values can be read.
 
-| Sampler | s | FID-10K | CLIP L/14 | CLIP B/32 |
-|---|---:|---:|---:|---:|
-| DPM-Solver++ 20 | 1 | 98.44 | 15.35 | 21.07 |
-| DPM-Solver++ 20 | 1.5 | 87.02 | 16.25 | 22.17 |
-| DPM-Solver++ 20 | 2 | 79.05 | 16.92 | 22.93 |
-| DPM-Solver++ 20 | 3 | 71.98 | 17.81 | 23.78 |
-| DPM-Solver++ 20 | 4 | 71.22 | 18.27 | 24.11 |
-| DPM-Solver++ 20 | 5 | 73.23 | 18.47 | 24.21 |
-| DDPM 250 | 4 | 76.66 | 18.32 | 24.17 |
+| Sampler         |   s | FID-10K | CLIP L/14 | CLIP B/32 |
+| --------------- | --: | ------: | --------: | --------: |
+| DPM-Solver++ 20 |   1 |   98.44 |     15.35 |     21.07 |
+| DPM-Solver++ 20 | 1.5 |   87.02 |     16.25 |     22.17 |
+| DPM-Solver++ 20 |   2 |   79.05 |     16.92 |     22.93 |
+| DPM-Solver++ 20 |   3 |   71.98 |     17.81 |     23.78 |
+| DPM-Solver++ 20 |   4 |   71.22 |     18.27 |     24.11 |
+| DPM-Solver++ 20 |   5 |   73.23 |     18.47 |     24.21 |
+| DDPM 250        |   4 |   76.66 |     18.32 |     24.17 |
 
 CLIP Score of the real images: 25.56 (L/14) and 30.15 (B/32).
 
@@ -43,16 +42,16 @@ These are the 8 examples kept with the evaluation, which were not selected for q
 images use DPM-Solver++ 20 with s = 4. They match the text only partly and show defects in shape
 and composition.
 
-| Caption | Real image | Generated |
-|---|---|---|
-| A white plate with sausage, eggs and other meat. | <img src="outputs/evaluation/dit_s4_150k/muestras/000000434763/real.png" width="128" alt="Real image"> | <img src="outputs/evaluation/dit_s4_150k/muestras/000000434763/final_dpm_cfg_4.png" width="128" alt="Generated image"> |
-| A man walking into the ocean while holding a surfboard. | <img src="outputs/evaluation/dit_s4_150k/muestras/000000332058/real.png" width="128" alt="Real image"> | <img src="outputs/evaluation/dit_s4_150k/muestras/000000332058/final_dpm_cfg_4.png" width="128" alt="Generated image"> |
-| A bird sitting in a field of beautiful purple flowers. | <img src="outputs/evaluation/dit_s4_150k/muestras/000000117237/real.png" width="128" alt="Real image"> | <img src="outputs/evaluation/dit_s4_150k/muestras/000000117237/final_dpm_cfg_4.png" width="128" alt="Generated image"> |
+| Caption                                                         | Real image                                                                                             | Generated                                                                                                              |
+| --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------- |
+| A white plate with sausage, eggs and other meat.                | <img src="outputs/evaluation/dit_s4_150k/muestras/000000434763/real.png" width="128" alt="Real image"> | <img src="outputs/evaluation/dit_s4_150k/muestras/000000434763/final_dpm_cfg_4.png" width="128" alt="Generated image"> |
+| A man walking into the ocean while holding a surfboard.         | <img src="outputs/evaluation/dit_s4_150k/muestras/000000332058/real.png" width="128" alt="Real image"> | <img src="outputs/evaluation/dit_s4_150k/muestras/000000332058/final_dpm_cfg_4.png" width="128" alt="Generated image"> |
+| A bird sitting in a field of beautiful purple flowers.          | <img src="outputs/evaluation/dit_s4_150k/muestras/000000117237/real.png" width="128" alt="Real image"> | <img src="outputs/evaluation/dit_s4_150k/muestras/000000117237/final_dpm_cfg_4.png" width="128" alt="Generated image"> |
 | A man and two women walking their dogs and hiking in the woods. | <img src="outputs/evaluation/dit_s4_150k/muestras/000000057703/real.png" width="128" alt="Real image"> | <img src="outputs/evaluation/dit_s4_150k/muestras/000000057703/final_dpm_cfg_4.png" width="128" alt="Generated image"> |
-| A woman smiling while standing next to a giraffe. | <img src="outputs/evaluation/dit_s4_150k/muestras/000000377361/real.png" width="128" alt="Real image"> | <img src="outputs/evaluation/dit_s4_150k/muestras/000000377361/final_dpm_cfg_4.png" width="128" alt="Generated image"> |
-| A man on a horse watching another man wrestle a cow. | <img src="outputs/evaluation/dit_s4_150k/muestras/000000246562/real.png" width="128" alt="Real image"> | <img src="outputs/evaluation/dit_s4_150k/muestras/000000246562/final_dpm_cfg_4.png" width="128" alt="Generated image"> |
-| Two giraffes are running through a bushy savannah. | <img src="outputs/evaluation/dit_s4_150k/muestras/000000531607/real.png" width="128" alt="Real image"> | <img src="outputs/evaluation/dit_s4_150k/muestras/000000531607/final_dpm_cfg_4.png" width="128" alt="Generated image"> |
-| A motorized cart fills a train with luggage | <img src="outputs/evaluation/dit_s4_150k/muestras/000000137727/real.png" width="128" alt="Real image"> | <img src="outputs/evaluation/dit_s4_150k/muestras/000000137727/final_dpm_cfg_4.png" width="128" alt="Generated image"> |
+| A woman smiling while standing next to a giraffe.               | <img src="outputs/evaluation/dit_s4_150k/muestras/000000377361/real.png" width="128" alt="Real image"> | <img src="outputs/evaluation/dit_s4_150k/muestras/000000377361/final_dpm_cfg_4.png" width="128" alt="Generated image"> |
+| A man on a horse watching another man wrestle a cow.            | <img src="outputs/evaluation/dit_s4_150k/muestras/000000246562/real.png" width="128" alt="Real image"> | <img src="outputs/evaluation/dit_s4_150k/muestras/000000246562/final_dpm_cfg_4.png" width="128" alt="Generated image"> |
+| Two giraffes are running through a bushy savannah.              | <img src="outputs/evaluation/dit_s4_150k/muestras/000000531607/real.png" width="128" alt="Real image"> | <img src="outputs/evaluation/dit_s4_150k/muestras/000000531607/final_dpm_cfg_4.png" width="128" alt="Generated image"> |
+| A motorized cart fills a train with luggage                     | <img src="outputs/evaluation/dit_s4_150k/muestras/000000137727/real.png" width="128" alt="Real image"> | <img src="outputs/evaluation/dit_s4_150k/muestras/000000137727/final_dpm_cfg_4.png" width="128" alt="Generated image"> |
 
 ### Training grid at 150,000 steps
 
@@ -73,17 +72,15 @@ src/        New code: features, dataset, training, sampling and evaluation (eval
 tests/      Tests
 notebooks/  Tutorial notebook
 outputs/    training/ (log and grids every 10K steps), evaluation/dit_s4_150k/ (metrics, traces, figures, examples)
-text_conditioned_dit_report/  Report: main.tex, references.bib, style file and figure copies (compile from this folder)
 ```
 
-| File in `src/` | Purpose |
-|---|---|
-| `extract_features.py`, `createCSV.py`, `make_null_embedding.py`, `text_utils.py` | VAE and CLIP features |
-| `dataset_t2i.py` | Dataset over the features |
-| `train.py` | Training |
-| `sample_t2i.py` | Image generation from text |
-| `eval/`, `analyze_evaluation.py`, `report_evaluation.py`, `verify_evaluation.py` | Evaluation and analyses |
-
+| File in `src/`                                                                   | Purpose                    |
+| -------------------------------------------------------------------------------- | -------------------------- |
+| `extract_features.py`, `createCSV.py`, `make_null_embedding.py`, `text_utils.py` | VAE and CLIP features      |
+| `dataset_t2i.py`                                                                 | Dataset over the features  |
+| `train.py`                                                                       | Training                   |
+| `sample_t2i.py`                                                                  | Image generation from text |
+| `eval/`, `analyze_evaluation.py`, `report_evaluation.py`, `verify_evaluation.py` | Evaluation and analyses    |
 
 ## Tutorial notebook
 
@@ -94,17 +91,6 @@ DiT-S/4 conditioning, a short training demonstration, generation from text, the 
 To run it, use the environment from step 1 below, then `pip install jupyter` and
 `jupyter notebook notebooks/text_to_image_tutorial.ipynb`. It downloads the checkpoint and the CLIP and VAE
 weights, and needs neither COCO nor a GPU.
-
-## What is not in git
-
-| Material | How to get it |
-|---|---|
-| COCO | Step 2 |
-| `features/` | Step 3 |
-| Checkpoint `last.pt` (528,048,707 bytes) | `eval.fetch_checkpoint` downloads it from [Drive](https://drive.google.com/file/d/1j-Y6_RWIFsyos7pAT5eBBhAcPtEjJ95a/view) and verifies SHA-256 `f693fd7391979856e7059994643e755239276ba5d66a31becf1ebf1e18e93c6b` |
-| Full evaluation PNGs | Step 6 |
-| CLIP ViT-L/14 and the `sd-vae-ft-ema` VAE | Downloaded from Hugging Face on first use |
-| New runs | Written to `outputs/runs/`, which git ignores |
 
 ## Reproducing the project
 
@@ -171,7 +157,6 @@ These are the arguments stored in the checkpoint, except `--results-dir`. Output
 - **Precision:** `--use-amp auto` enables bf16 on CUDA or on a CPU with AVX-512 BF16. Otherwise it
   runs in fp32. The original run used a CPU with bf16.
 
-
 ### 5. Generating images
 
 ```bash
@@ -204,5 +189,3 @@ Silicon, so use `mps` for the three device options to match it.
 
 The analyses need the full PNGs. So does `src/verify_evaluation.py`, which also depends on the
 absolute paths stored in the traces, so it only works where those paths exist.
-
-
